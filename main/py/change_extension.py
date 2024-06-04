@@ -62,18 +62,18 @@ def process_xlsx_file(xlsx_file, mysql_connection_params):
     table_name = os.path.splitext(xlsx_file)[0]
 
     try:
+        print("1 입니다")
         # 엑셀 파일을 읽어서 DataFrame으로 변환
         df = pd.read_excel(xlsx_path)
+        print("2 입니다")
 
         # 모든 값이 NaN인 열을 제거
         df.dropna(axis=1, how='all', inplace=True)
-
-        # 'From Country' 열 삭제 (정확히 일치하는 열만 삭제)
-        if 'From Country' in df.columns:
-            df.drop(columns=['From Country'], inplace=True)
+        print("3 입니다")
 
         # 열 이름을 정리 (중복 제거 및 공백을 밑줄로 대체)
         df = sanitize_column_names(df)
+        print("4 입니다")
 
         # MySQL 데이터베이스에 연결
         connection = mysql.connector.connect(**mysql_connection_params)
