@@ -109,13 +109,13 @@ try:
         EC.presence_of_element_located(
             (
                 By.CSS_SELECTOR,
-                "div.x-grid3-row:nth-child(34) > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(1) > td:nth-child(1) > div:nth-child(1)",
+                "div.x-grid3-row:nth-child(34)"
             )
         )
     )
     elementName = driver.find_element(
         By.CSS_SELECTOR,
-        "div.x-grid3-row:nth-child(34) > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(1) > td:nth-child(1) > div:nth-child(1)",
+        "div.x-grid3-row:nth-child(34)"
     )
     elementName.click()
     action = ActionChains(driver)
