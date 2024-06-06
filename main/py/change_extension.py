@@ -1,7 +1,7 @@
 import os
 import pandas as pd
-import mysql.connector
-from mysql.connector import Error
+import openpyxl
+from mysql_connection import MySQLConnection
 
 # 다운로드 폴더 경로 설정
 download_folder = "C:\\MyMain\\Teckwah\\download\\xlsx_files"
@@ -9,9 +9,6 @@ xlsx_complete_folder = os.path.join("C:\\MyMain\\Teckwah\\download\\", "xlsx_fil
 
 # 폴더가 존재하지 않으면 생성
 os.makedirs(xlsx_complete_folder, exist_ok=True)
-
-# 다운로드 폴더에서 모든 .xlsx 파일을 찾기
-xlsx_files = [f for f in os.listdir(download_folder) if f.endswith(".xlsx") and not f.startswith("~$")]
 
 # MySQL 연결 설정
 mysql_connection_params = {
@@ -62,31 +59,36 @@ def process_xlsx_file(xlsx_file, mysql_connection_params):
     table_name = os.path.splitext(xlsx_file)[0]
 
     try:
-        print("1 입니다")
+        # 엑셀 파일의 E1 셀을 "from_country_2"로 변경
+        workbook = openpyxl.load_workbook(xlsx_path)
+        sheet = workbook.active
+        sheet['E1'] = 'from_country_2'
+        workbook.save(xlsx_path)
+
         # 엑셀 파일을 읽어서 DataFrame으로 변환
         df = pd.read_excel(xlsx_path)
-        print("2 입니다")
 
         # 모든 값이 NaN인 열을 제거
         df.dropna(axis=1, how='all', inplace=True)
-        print("3 입니다")
+
+        # from_Country가 KR인 데이터만 필터링
+        df = df[df['from_Country'] == 'KR']
 
         # 열 이름을 정리 (중복 제거 및 공백을 밑줄로 대체)
         df = sanitize_column_names(df)
-        print("4 입니다")
 
         # MySQL 데이터베이스에 연결
-        connection = mysql.connector.connect(**mysql_connection_params)
-        cursor = connection.cursor()
+        db_connection = MySQLConnection(**mysql_connection_params)
+        db_connection.connect()
 
         # 테이블이 존재하지 않는 경우 생성
-        create_table_from_df(cursor, table_name, df)
+        create_table_from_df(db_connection.cursor, table_name, df)
 
         # 데이터 삽입
-        insert_data_from_df(cursor, table_name, df)
+        insert_data_from_df(db_connection.cursor, table_name, df)
 
         # 커밋
-        connection.commit()
+        db_connection.connection.commit()
 
         # 변환된 .xlsx 파일을 xlsx_files_complete 폴더로 이동
         complete_path = os.path.join(xlsx_complete_folder, xlsx_file)
@@ -96,12 +98,13 @@ def process_xlsx_file(xlsx_file, mysql_connection_params):
     except Exception as e:
         print(f"파일 변환 중 오류 발생: {xlsx_file}, 오류: {e}")
     finally:
-        if connection and connection.is_connected():
-            cursor.close()
-            connection.close()
+        db_connection.close()
 
-# 모든 .xlsx 파일을 처리
-for xlsx_file in xlsx_files:
-    process_xlsx_file(xlsx_file, mysql_connection_params)
+# 특정 파일명 입력 받기
+target_file = input("처리할 .xlsx 파일명을 입력하세요 (확장자 포함): ")
 
-print("모든 .xlsx 파일을 MySQL로 변환했습니다.")
+if target_file in os.listdir(download_folder):
+    process_xlsx_file(target_file, mysql_connection_params)
+    print("선택된 파일을 MySQL로 변환했습니다.")
+else:
+    print("해당 파일이 다운로드 폴더에 존재하지 않습니다.")

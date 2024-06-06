@@ -1,3 +1,6 @@
+# 원하는 report 파일을 크롤링 후 다운로드 코드
+
+
 import pandas as pd
 import sys
 from selenium import webdriver
@@ -19,6 +22,7 @@ import os
 
 # 명령줄 인수로부터 날짜 및 로그인 정보를 받아옵니다.
 username, password, date_1, date_2, date_3, date_4 = sys.argv[1:]
+
 # 다운로드 폴더 경로 설정
 download_folder = "C:\\MyMain\\Teckwah\\download\\xlsx_files"
 
@@ -177,6 +181,7 @@ element_confirm.click()
 
 # 다운로드가 완료될 때까지 대기
 time.sleep(30)
+
 
 # 다운로드된 파일의 이름을 변경하는 함수
 def rename_downloaded_file(download_folder, new_name):
