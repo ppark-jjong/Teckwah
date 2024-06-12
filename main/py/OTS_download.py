@@ -127,6 +127,17 @@ def process_OTS(driver, date_1, date_2, date_3, date_4):
 # 지정된 report 찾기 및 다운로드 실행
 process_OTS(driver, date_1, date_2, date_3, date_4)
 
+# 다운로드 대기
+def wait_for_download(download_folder, timeout=60):
+    start_time = time.time()
+    while True:
+        if any(file.endswith(".xlsx") for file in os.listdir(download_folder)):
+            break
+        if time.time() - start_time > timeout:
+            print("다운로드 대기 시간 초과")
+            break
+        time.sleep(1)
+
 # 다운로드된 파일의 이름을 변경하는 함수
 def rename_downloaded_file(download_folder, new_name):
     files = os.listdir(download_folder)
@@ -140,18 +151,6 @@ def rename_downloaded_file(download_folder, new_name):
         print(f"파일 이름이 {new_name}(으)로 변경되었습니다.")
     else:
         print("다운로드된 파일을 찾을 수 없습니다.")
-
-# 다운로드 대기
-def wait_for_download(download_folder, timeout=60):
-    start_time = time.time()
-    while True:
-        if any(file.endswith(".xlsx") for file in os.listdir(download_folder)):
-            break
-        if time.time() - start_time > timeout:
-            print("다운로드 대기 시간 초과")
-            break
-        time.sleep(1)
-
 # 파일 다운로드 대기
 wait_for_download(download_folder)
 
