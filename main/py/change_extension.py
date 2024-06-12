@@ -3,7 +3,7 @@ import pandas as pd
 import openpyxl
 from mysql_connection import MySQLConnection
 
-# 다운로드 폴더 경로 설정
+# 다운로드 폴더  경로 설정
 download_folder = "C:\\MyMain\\Teckwah\\download\\xlsx_files"
 xlsx_complete_folder = os.path.join("C:\\MyMain\\Teckwah\\download\\", "xlsx_files_complete")
 
