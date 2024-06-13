@@ -8,7 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait as WB
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
-import crawling_login
+import main.py.login_crawling as login_crawling
 
 # 명령줄 인수로부터 날짜 및 로그인 정보를 받아옵니다.
 username, password, date_1, date_2, date_3, date_4 = sys.argv[1:]
@@ -17,12 +17,12 @@ username, password, date_1, date_2, date_3, date_4 = sys.argv[1:]
 download_folder = "C:\\MyMain\\Teckwah\\download\\xlsx_files"
 
 # 드라이버 초기화 및 로그인
-driver = crawling_login.initialize_driver(download_folder)
-crawling_login.login(driver, username, password)
-crawling_login.search_report(driver)
+driver = login_crawling.initialize_driver(download_folder)
+login_crawling.login(driver, username, password)
+login_crawling.search_report(driver)
 
 # 지정된 report 찾기 및 다운로드 함수
-def process_OTS(driver, date_1, date_2, date_3, date_4):
+def process_main(driver, date_1, date_2, date_3, date_4):
     try:
         # 지정된 report 찾기 로직
         WB(driver, 30).until(
@@ -125,9 +125,9 @@ def process_OTS(driver, date_1, date_2, date_3, date_4):
         exit(1)
 
 # 지정된 report 찾기 및 다운로드 실행
-process_OTS(driver, date_1, date_2, date_3, date_4)
+def check_existing_file(download_folder, new_name):
+    return os.path.exists(os.path.join(download_folder, new_name))
 
-# 다운로드 대기
 def wait_for_download(download_folder, timeout=60):
     start_time = time.time()
     while True:
@@ -138,7 +138,6 @@ def wait_for_download(download_folder, timeout=60):
             break
         time.sleep(1)
 
-# 다운로드된 파일의 이름을 변경하는 함수
 def rename_downloaded_file(download_folder, new_name):
     files = os.listdir(download_folder)
     files = [f for f in files if f.endswith(".xlsx")]  # 엑셀 파일 필터링
@@ -148,14 +147,34 @@ def rename_downloaded_file(download_folder, new_name):
             [os.path.join(download_folder, f) for f in files], key=os.path.getctime
         )
         os.rename(latest_file, os.path.join(download_folder, new_name))
-        print(f"파일 이름이 {new_name}(으)로 변경되었습니다.")
+        success_message = f"파일 이름이 {new_name}(으)로 변경되었습니다."
+        print(success_message)
+        pg.alert(text=success_message, title="알림", button="OK")
     else:
-        print("다운로드된 파일을 찾을 수 없습니다.")
+        error_message = "다운로드된 파일을 찾을 수 없습니다."
+        print(error_message)
+        pg.alert(text=error_message, title="Error", button="OK")
+
+# 파일 이름 충돌 확인 및 덮어쓰기 여부 묻기
+new_name = f"OTS_{date_1}_{date_2}.xlsx"
+if check_existing_file(download_folder, new_name):
+    overwrite = pg.confirm(
+        text=f"{new_name} 파일이 이미 존재합니다. 덮어쓰시겠습니까?",
+        title="파일 덮어쓰기 확인",
+        buttons=["예", "아니오"]
+    )
+    if overwrite != "예":
+        pg.alert(text="다운로드가 취소되었습니다.", title="알림", button="OK")
+        driver.quit()
+        exit(0)
+
+# 지정된 report 찾기 및 다운로드 실행
+process_main(driver, date_1, date_2, date_3, date_4)
+
 # 파일 다운로드 대기
 wait_for_download(download_folder)
 
 # 다운로드된 파일의 이름 변경
-new_name = f"OTS_{date_1}_{date_2}.xlsx"
 rename_downloaded_file(download_folder, new_name)
 
 # 다운로드 완료 알림창
