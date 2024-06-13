@@ -1,6 +1,7 @@
 import mysql.connector
 from mysql.connector import Error
 
+
 class MySQLConnection:
     def __init__(self, host, database, user, password, allow_local_infile=True):
         self.connection_params = {
