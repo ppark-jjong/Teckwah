@@ -8,7 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait as WB
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
-import main.py.login_crawling as login_crawling
+import login_crawling
 
 # 명령줄 인수로부터 날짜 및 로그인 정보를 받아옵니다.
 username, password, date_1, date_2, date_3, date_4 = sys.argv[1:]

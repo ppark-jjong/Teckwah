@@ -13,7 +13,7 @@ from selenium.common.exceptions import (
     NoSuchElementException,
     WebDriverException,
 )
-import main.py.login_crawling as login_crawling
+import login_crawling
 
 # 명령줄 인수로부터 날짜 및 로그인 정보를 받아옵니다.
 username, password = sys.argv[1:]
