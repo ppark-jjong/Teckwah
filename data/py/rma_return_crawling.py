@@ -1,6 +1,6 @@
+import datetime
 import sys
 import time
-import datetime
 import os
 import pyautogui as pg
 from selenium.webdriver.common.by import By
@@ -27,8 +27,13 @@ login_crawling.login(driver, username, password)
 login_crawling.search_report(driver)
 
 
+# 기존 파일 목록을 가져오는 함수
+def get_existing_files(download_folder):
+    return set(os.listdir(download_folder))
+
+
 # 지정된 report 찾기 및 다운로드 함수
-def process_main(driver):
+def process_rma_return(driver):
     try:
         # 지정된 report 찾기 로직
         WB(driver, 30).until(
@@ -70,16 +75,17 @@ def process_main(driver):
         exit(1)
 
     try:
+
         element_gen351 = WB(driver, 20).until(
             EC.presence_of_element_located((By.ID, "ext-gen351"))
         )
         element_gen351.click()
-        action.send_keys(Keys.DOWN).send_keys(Keys.ENTER).perform()
-        
-        element_gen364 = WB(driver, 20).until(
+        action.send_keys(Keys.DOWN).send_keys(Keys.DOWN).send_keys(Keys.ENTER).perform()
+
+        element_gen351 = WB(driver, 20).until(
             EC.presence_of_element_located((By.ID, "ext-gen364"))
         )
-        element_gen364.click()
+        element_gen351.click()
         action.send_keys(Keys.DOWN).send_keys(Keys.DOWN).send_keys(Keys.ENTER).perform()
 
         element_confirm = WB(driver, 20).until(
@@ -112,45 +118,64 @@ def process_main(driver):
         exit(1)
 
 
-# 다운로드 대기
-def wait_for_download(download_folder, timeout=60):
+# 다운로드된 파일을 기다리는 함수
+def wait_for_download(download_folder, existing_files, timeout=60):
     start_time = time.time()
-    downloaded_file = None
     while True:
-        files = [f for f in os.listdir(download_folder) if f.endswith(".xlsx")]
-        if files:
-            downloaded_file = max(
-                [os.path.join(download_folder, f) for f in files], key=os.path.getctime
-            )
-            break
+        current_files = set(os.listdir(download_folder))
+        new_files = current_files - existing_files
+        if any(file.endswith(".xlsx") for file in new_files):
+            return new_files
         if time.time() - start_time > timeout:
             print("다운로드 대기 시간 초과")
             break
         time.sleep(1)
-    return downloaded_file
+    return set()
 
 
 # 다운로드된 파일의 이름을 변경하는 함수
-def rename_downloaded_file(downloaded_file, new_name):
-    if downloaded_file and os.path.exists(downloaded_file):
-        os.rename(downloaded_file, os.path.join(download_folder, new_name))
-        print(f"파일 이름이 {new_name}(으)로 변경되었습니다.")
+def rename_downloaded_file(download_folder, new_files, new_name):
+    if new_files:
+        latest_file = max(
+            [
+                os.path.join(download_folder, f)
+                for f in new_files
+                if f.endswith(".xlsx")
+            ],
+            key=os.path.getctime,
+        )
+        os.rename(latest_file, os.path.join(download_folder, new_name))
+        success_message = f"파일 이름이 {new_name}(으)로 변경되었습니다."
+        print(success_message)
+        pg.alert(text=success_message, title="알림", button="OK")
     else:
-        print("다운로드된 파일을 찾을 수 없습니다.")
+        error_message = "다운로드된 파일을 찾을 수 없습니다."
+        print(error_message)
+        pg.alert(text=error_message, title="Error", button="OK")
 
 
-# 지정된 report 찾기 및 다운로드 실행
-process_main(driver)
+# 메인 실행 부분
+if __name__ == "__main__":
+    try:
+        # 기존 파일 목록을 저장합니다.
+        existing_files = get_existing_files(download_folder)
 
-# 파일 다운로드 대기
-downloaded_file = wait_for_download(download_folder)
+        today = datetime.date.today()
 
-# 오늘 날짜를 얻음
-today = datetime.date.today()
+        # 바꿀 파일 이름 지정
+        new_name = f"{today}_rma_return.xlsx"
 
-# 다운로드된 파일의 이름 변경
-new_name = f"{today}_RMA_Return_Report.xlsx"
-rename_downloaded_file(downloaded_file, new_name)
+        # 지정된 report 찾기 및 다운로드 실행
+        process_rma_return(driver)
 
-# 다운로드 완료 알림창
-pg.alert(text="다운로드가 완료되었습니다.", title="알림", button="OK")
+        # 파일 다운로드 대기
+        new_files = wait_for_download(download_folder, existing_files)
+
+        # 다운로드된 파일의 이름 변경
+        rename_downloaded_file(download_folder, new_files, new_name)
+
+        # 다운로드 완료 알림창
+        pg.alert(text="다운로드가 완료되었습니다.", title="알림", button="OK")
+    finally:
+        # 드라이버 종료
+        driver.quit()

@@ -1,5 +1,0 @@
-Power BI Service 또는 Power BI Embedded: 시각화 대시보드를 호스팅.
-React: 사용자 인터페이스 구성.
-Node.js: 백엔드 서버.
-MySQL: 데이터 저장.
-Power BI JavaScript API: 대시보드를 웹 애플리케이션에 임베드 및 상호작용 구현.

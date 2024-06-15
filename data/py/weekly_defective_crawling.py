@@ -27,8 +27,13 @@ login_crawling.login(driver, username, password)
 login_crawling.search_report(driver)
 
 
+# 기존 파일 목록을 가져오는 함수
+def get_existing_files(download_folder):
+    return set(os.listdir(download_folder))
+
+
 # 지정된 report 찾기 및 다운로드 함수
-def process_main(driver):
+def process_weekly_defective(driver):
     try:
         # 지정된 report 찾기 로직
         WB(driver, 30).until(
@@ -106,54 +111,75 @@ def process_main(driver):
         exit(1)
 
 
-# 다운로드 대기
-def wait_for_download(download_folder, timeout=60):
+# 다운로드된 파일을 기다리는 함수
+def wait_for_download(download_folder, existing_files, timeout=60):
     start_time = time.time()
-    downloaded_file = None
     while True:
-        files = [f for f in os.listdir(download_folder) if f.endswith(".xlsx")]
-        if files:
-            downloaded_file = max(
-                [os.path.join(download_folder, f) for f in files], key=os.path.getctime
-            )
-            break
+        current_files = set(os.listdir(download_folder))
+        new_files = current_files - existing_files
+        if any(file.endswith(".xlsx") for file in new_files):
+            return new_files
         if time.time() - start_time > timeout:
             print("다운로드 대기 시간 초과")
             break
         time.sleep(1)
-    return downloaded_file
+    return set()
 
 
 # 다운로드된 파일의 이름을 변경하는 함수
-def rename_downloaded_file(downloaded_file, new_name):
-    if downloaded_file and os.path.exists(downloaded_file):
-        os.rename(downloaded_file, os.path.join(download_folder, new_name))
-        print(f"파일 이름이 {new_name}(으)로 변경되었습니다.")
+def rename_downloaded_file(download_folder, new_files, new_name):
+    if new_files:
+        latest_file = max(
+            [
+                os.path.join(download_folder, f)
+                for f in new_files
+                if f.endswith(".xlsx")
+            ],
+            key=os.path.getctime,
+        )
+        os.rename(latest_file, os.path.join(download_folder, new_name))
+        success_message = f"파일 이름이 {new_name}(으)로 변경되었습니다."
+        print(success_message)
+        pg.alert(text=success_message, title="알림", button="OK")
     else:
-        print("다운로드된 파일을 찾을 수 없습니다.")
+        error_message = "다운로드된 파일을 찾을 수 없습니다."
+        print(error_message)
+        pg.alert(text=error_message, title="Error", button="OK")
 
 
-# 지정된 report 찾기 및 다운로드 실행
-process_main(driver)
+# 메인 실행 부분
+if __name__ == "__main__":
+    
+    try:
+        # 오늘 날짜를 얻음
+        today = datetime.date.today()
 
-# 파일 다운로드 대기
-downloaded_file = wait_for_download(download_folder)
+        # 첫째 주를 기준으로 현재 날짜가 몇 번째 주인지 계산
+        # 월의 첫째 주는 1일이 포함된 주로 시작
+        first_day_of_month = today.replace(day=1)
+        first_day_of_week = first_day_of_month.weekday()  # 월요일을 기준으로 0 ~ 6
+        days_since_first_day = today.day + first_day_of_week
 
-# 오늘 날짜를 얻음
-today = datetime.date.today()
+        # 몇 번째 주인지 계산
+        week_number = (days_since_first_day - 1) // 7 + 1
 
-# 첫째 주를 기준으로 현재 날짜가 몇 번째 주인지 계산
-# 월의 첫째 주는 1일이 포함된 주로 시작
-first_day_of_month = today.replace(day=1)
-first_day_of_week = first_day_of_month.weekday()  # 월요일을 기준으로 0 ~ 6
-days_since_first_day = today.day + first_day_of_week
+        # 기존 파일 목록을 저장합니다.
+        existing_files = get_existing_files(download_folder)
 
-# 몇 번째 주인지 계산
-week_number = (days_since_first_day - 1) // 7 + 1
+        # 바꿀 파일 이름 지정
+        new_name = f"{today.month}월_{week_number}주_weekly_defective.xlsx"
 
-# 다운로드된 파일의 이름 변경
-new_name = f"{today.month}월_{week_number}주_Weekly_Defective_Report.xlsx"
-rename_downloaded_file(downloaded_file, new_name)
+        # 지정된 report 찾기 및 다운로드 실행
+        process_weekly_defective(driver)
 
-# 다운로드 완료 알림창
-pg.alert(text="다운로드가 완료되었습니다.", title="알림", button="OK")
+        # 파일 다운로드 대기
+        new_files = wait_for_download(download_folder, existing_files)
+
+        # 다운로드된 파일의 이름 변경
+        rename_downloaded_file(download_folder, new_files, new_name)
+
+        # 다운로드 완료 알림창
+        pg.alert(text="다운로드가 완료되었습니다.", title="알림", button="OK")
+    finally:
+        # 드라이버 종료
+        driver.quit()
