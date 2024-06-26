@@ -1,7 +1,6 @@
 import mysql.connector
 from mysql.connector import Error
 
-
 class MySQLConnection:
     def __init__(self, host, database, user, password, allow_local_infile=True):
         self.connection_params = {
@@ -13,6 +12,13 @@ class MySQLConnection:
         }
         self.connection = None
         self.cursor = None
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     def connect(self):
         try:
