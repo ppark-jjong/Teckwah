@@ -1,8 +1,7 @@
 import os
+import pandas as pd
 import openpyxl
 import shutil
-import pandas as pd
-
 import mysql.connector
 import datetime
 
@@ -41,12 +40,12 @@ CREATE TABLE IF NOT EXISTS Receiving_TAT_Report (
     Ship_From VARCHAR(255),
     Ship_to VARCHAR(255),
     Country VARCHAR(255),
-    Quantity INT,
+    Quantity BIGINT(45),
     PutAwayDate DATETIME,
     Dell_FY VARCHAR(20),
     Quarter VARCHAR(10),
-    Dell_Week VARCHAR(10),
     Month VARCHAR(20),
+    Dell_Week VARCHAR(10),
     OrderType VARCHAR(255),
     Count_RC INT,
     Count_PO INT,
@@ -141,12 +140,15 @@ def upload_to_mysql(xlsx_file, file_path):
     df = df[available_columns]
     df = rename_columns(df)
 
+    # Country 컬럼에서 'KR' 값만 필터링
+    df = df[df['Country'] == 'KR']
+
     df = df.where(pd.notnull(df), None)
     df["PutAwayDate"] = pd.to_datetime(df["PutAwayDate"], format="%m/%d/%Y %H:%M:%S", errors="coerce")
     df["PutAwayDate"] = df["PutAwayDate"].dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    # Quantity를 정수로 변환
-    df["Quantity"] = pd.to_numeric(df["Quantity"], errors='coerce').fillna(0).astype(int)
+    # Quantity를 숫자가 아닌 값을 0으로 대체
+    df["Quantity"] = pd.to_numeric(df["Quantity"], errors='coerce').fillna(0)
 
     df["Dell_Week"] = df["PutAwayDate"].apply(lambda x: get_dell_week_and_fy(x)[0] if pd.notnull(x) else None)
     df["Dell_FY"] = df["PutAwayDate"].apply(lambda x: get_dell_week_and_fy(x)[1] if pd.notnull(x) else None)
@@ -172,10 +174,6 @@ def upload_to_mysql(xlsx_file, file_path):
         )
 
     insert_columns = [
-        "Dell_FY",
-        "Quarter",
-        "Month",
-        "Dell_Week",
         "ReceiptNo",
         "Customer_Order_No",
         "PO_No",
@@ -186,6 +184,10 @@ def upload_to_mysql(xlsx_file, file_path):
         "Country",
         "Quantity",
         "PutAwayDate",
+        "Dell_FY",
+        "Quarter",
+        "Month",
+        "Dell_Week",
         "OrderType",
         "Count_RC",
         "Count_PO"
@@ -205,8 +207,8 @@ def upload_to_mysql(xlsx_file, file_path):
                 Ship_From=VALUES(Ship_From),
                 Ship_to=VALUES(Ship_to),
                 Country=VALUES(Country),
-                Quantity=VALUES(Quantity
-                                PutAwayDate=VALUES(PutAwayDate),
+                Quantity=VALUES(Quantity),
+                PutAwayDate=VALUES(PutAwayDate),
                 Dell_Week=VALUES(Dell_Week),
                 Dell_FY=VALUES(Dell_FY),
                 Quarter=VALUES(Quarter),
@@ -231,5 +233,3 @@ if __name__ == "__main__":
     if os.path.exists(os.path.join(download_folder, xlsx_file_name)):
         latest_file = get_latest_file(download_folder)
         upload_to_mysql(xlsx_file_name, latest_file)
-    else:
-        print(f"파일이 존재하지 않습니다: {xlsx_file_name}")
