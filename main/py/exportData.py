@@ -1,5 +1,10 @@
 import pandas as pd
 import mysql.connector
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email import encoders
 
 # MySQL 연결 설정
 db_config = {
@@ -25,9 +30,48 @@ def export_to_csv(data, file_path):
     df.to_csv(file_path, index=False)
     print(f"데이터가 성공적으로 {file_path}에 내보내졌습니다.")
 
+def send_email_with_attachment(email_config, file_path):
+    """첨부 파일과 함께 이메일을 보냅니다."""
+    msg = MIMEMultipart()
+    msg['From'] = email_config['from_email']
+    msg['To'] = email_config['to_email']
+    msg['Subject'] = email_config['subject']
+
+    body = email_config['body']
+    msg.attach(MIMEText(body, 'plain'))
+
+    attachment = open(file_path, 'rb')
+    part = MIMEBase('application', 'octet-stream')
+    part.set_payload(attachment.read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', f"attachment; filename= {file_path}")
+
+    msg.attach(part)
+
+    server = smtplib.SMTP(email_config['smtp_server'], email_config['smtp_port'])
+    server.starttls()
+    server.login(email_config['from_email'], email_config['password'])
+    text = msg.as_string()
+    server.sendmail(email_config['from_email'], email_config['to_email'], text)
+    server.quit()
+
+    print(f"이메일이 성공적으로 {email_config['to_email']}로 보내졌습니다.")
+
 if __name__ == "__main__":
     query = "SELECT * FROM Receiving_TAT_Report"
     db_data = get_database_data(query)
     
     csv_file_path = "C:\\MyMain\\Teckwah\\download\\exported_data.csv"
     export_to_csv(db_data, csv_file_path)
+    
+    email_config = {
+        'from_email': 'jonghyeok_park@teckwah.co.kr',        # 보내는 사람 이메일 주소
+        'to_email': 'parkjonghyeok2000@gmail.com',      # 받는 사람 이메일 주소
+        'subject': 'Exported Data',
+        'body': 'Here is the exported data from the database.',
+        'smtp_server': 'smtp.office365.com',            # Outlook SMTP 서버 주소
+        'smtp_port': 587,                               # Outlook SMTP 포트 번호
+        'password': 'Hyeok970209@'               # 보내는 사람 이메일 계정 비밀번호
+    }
+    
+    send_email_with_attachment(email_config, csv_file_path)
