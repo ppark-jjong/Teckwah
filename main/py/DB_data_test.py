@@ -2,55 +2,31 @@ import pandas as pd
 import mysql.connector
 import datetime
 
-
 # MySQL 연결 설정
 db_config = {
     "host": "localhost",
     "database": "teckwah_test",
     "user": "root",
     "password": "1234",
-    "allow_local_infile": True,
 }
 
-# MySQL 데이터베이스 연결
-conn = mysql.connector.connect(**db_config)
-cursor = conn.cursor()
-
-# 테이블 생성
-cursor.execute(
-    """
-CREATE TABLE IF NOT EXISTS Receiving_TAT_Report (
-    ReceiptNo VARCHAR(255) PRIMARY KEY,
-    Replen_Balance_Order_No VARCHAR(255),
-    Cust_Sys_No VARCHAR(255),
-    Allocated_Part_No VARCHAR(255),
-    EDI_Order_Type VARCHAR(255),
-    Ship_From_Code VARCHAR(255),
-    Ship_To_Code VARCHAR(255),
-    Country VARCHAR(255),
-    Quantity INT,
-    PutAwayDate DATETIME,
-    Dell_Week VARCHAR(10),
-    FY VARCHAR(10),
-    Quarter VARCHAR(10),
-    OrderType VARCHAR(255)
-)
-"""
-)
-
-conn.commit()
-cursor.close()
-conn.close()
-
 # 엑셀 파일 경로 설정
-xlsx_file_path = "C:\\MyMain\\Teckwah\\download\\xlsx_files_complete\\3.012_CS_Receiving_TAT_Report.xlsx"
+excel_file_path = "C:\\MyMain\\Teckwah\\download\\xlsx_files\\3.012_CS_Receiving_TAT_Report.xlsx"
 
-# 엑셀 데이터 읽기
-df_excel = pd.read_excel(xlsx_file_path, sheet_name="CS Receiving TAT")
+def get_database_data(query):
+    """데이터베이스에서 데이터를 조회합니다."""
+    conn = mysql.connector.connect(**db_config)
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(query)
+    data = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return data
 
-# 필요한 컬럼만 선택하고 컬럼명 일치시키기
-df_excel = df_excel[
-    [
+def get_excel_data(file_path):
+    """엑셀 파일에서 데이터를 읽어옵니다."""
+    df = pd.read_excel(file_path, sheet_name="CS Receiving TAT")
+    expected_columns = [
         "ReceiptNo",
         "Replen/Balance Order#",
         "Cust Sys No",
@@ -62,196 +38,105 @@ df_excel = df_excel[
         "Quantity",
         "PutAwayDate",
     ]
-]
+    available_columns = [col for col in expected_columns if col in df.columns]
+    df = df[available_columns]
+    df = rename_columns(df)
+    df = df[df["Country"] == "KR"]
+    df["PutAwayDate"] = pd.to_datetime(
+        df["PutAwayDate"], format="%m/%d/%Y %H:%M:%S", errors="coerce"
+    )
+    df["PutAwayDate"] = df["PutAwayDate"].dt.strftime("%Y-%m-%d %H:%M:%S")
 
-# 컬럼명 일치시키기
-df_excel.columns = [
-    "ReceiptNo",
-    "Replen_Balance_Order_No",
-    "Cust_Sys_No",
-    "Allocated_Part_No",
-    "EDI_Order_Type",
-    "Ship_From_Code",
-    "Ship_To_Code",
-    "Country",
-    "Quantity",
-    "PutAwayDate",
-]
+    df["Dell_FY"] = df["PutAwayDate"].apply(lambda x: get_dell_week_and_fy(x)[1] if pd.notnull(x) else None)
+    df["Quarter"] = df["PutAwayDate"].apply(lambda x: get_quarter(x) if pd.notnull(x) else None)
+    df["Month"] = df["PutAwayDate"].apply(lambda x: (datetime.datetime.strptime(x, "%Y-%m-%d %H:%M:%S").strftime("%m") if pd.notnull(x) else None))
+    df["Dell_Week"] = df["PutAwayDate"].apply(lambda x: get_dell_week_and_fy(x)[0] if pd.notnull(x) else None)
+    df["OrderType"] = df["EDI_Order_Type"].apply(get_order_type)
 
-# 데이터 유형 변환
-df_excel["Replen_Balance_Order_No"] = df_excel["Replen_Balance_Order_No"].astype(str)
-df_excel["PutAwayDate"] = pd.to_datetime(
-    df_excel["PutAwayDate"], format="%m/%d/%Y %H:%M:%S"
-)
-df_excel["PutAwayDate"] = df_excel["PutAwayDate"].dt.strftime("%Y-%m-%d %H:%M:%S")
+    return df
 
+def rename_columns(df):
+    """컬럼명을 일치시킵니다."""
+    rename_columns = {
+        "ReceiptNo": "ReceiptNo",
+        "Replen/Balance Order#": "Customer_Order_No",
+        "Cust Sys No": "PO_No",
+        "Allocated Part#": "Part",
+        "EDI Order Type": "EDI_Order_Type",
+        "ShipFromCode": "Ship_From",
+        "ShipToCode": "Ship_to",
+        "Country": "Country",
+        "Quantity": "Quantity",
+        "PutAwayDate": "PutAwayDate",
+    }
+    return df.rename(columns=rename_columns)
 
-# Date 값을 Dell-Week와 FY로 변환하는 함수
+def get_fy_start(year):
+    first_day = datetime.datetime(year, 2, 1)
+    days_until_saturday = (5 - first_day.weekday() + 7) % 7
+    return first_day + datetime.timedelta(days=days_until_saturday)
+
 def get_dell_week_and_fy(date_str):
     date = datetime.datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-    fy_start_month = 2
-    fy_start_day = 1
 
-    if date.month < fy_start_month or (
-        date.month == fy_start_month and date.day < fy_start_day
-    ):
+    fy_start = get_fy_start(date.year)
+    if date < fy_start:
+        fy_start = get_fy_start(date.year - 1)
         fy = date.year - 1
     else:
         fy = date.year
 
-    fy_start_date = datetime.datetime(fy, fy_start_month, fy_start_day)
-    delta = date - fy_start_date
-    dell_week = (delta.days // 7) + 1
+    days_since_fy_start = (date - fy_start).days
+    dell_week = (days_since_fy_start // 7) + 1
+
+    if dell_week > 52:
+        dell_week = 52
+
     dell_week_str = f"WK{str(dell_week).zfill(2)}"
     fy_str = f"FY{str(fy % 100).zfill(2)}"
 
     return dell_week_str, fy_str
 
-
-# Quarter 계산 함수
 def get_quarter(date_str):
     date = datetime.datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-    return f"Q{((date.month - 1) // 3) + 1}"
+    _, fy = get_dell_week_and_fy(date_str)
+    fy_year = int(fy[2:]) + 2000
+    fy_start = get_fy_start(fy_year - 1)
 
+    days_since_fy_start = (date - fy_start).days
+    quarter = (days_since_fy_start // 91) + 1
+    if quarter > 4:
+        quarter = 4
 
-# OrderType 계산 함수
+    return f"Q{quarter}"
+
 def get_order_type(edi_order_type):
-    # EDI_Order_Type을 기반으로 OrderType을 결정하는 로직이 이미 존재한다고 가정
-    # 필요시 구체적인 매핑 로직 추가
-    return edi_order_type
+    """EDI_Order_Type을 OrderType으로 변환합니다."""
+    order_type_mapping = {
+        "BALANCE-IN": "P3",
+        "REPLEN-IN": "P3",
+        "PNAE-IN": "P1",
+        "PNAC-IN": "P1",
+        "DISPOSE-IN": "P6",
+        "PURGE-IN": "P6",
+    }
+    return order_type_mapping.get(edi_order_type, "Unknown")
 
+def compare_data(df, db_data):
+    """엑셀 데이터와 데이터베이스 데이터를 비교합니다."""
+    db_df = pd.DataFrame(db_data)
+    comparison = df.merge(db_df, on="ReceiptNo", suffixes=('_excel', '_db'), how='outer', indicator=True)
+    diff = comparison[comparison['_merge'] != 'both']
+    return diff
 
-# 추가 컬럼 계산
-df_excel["Dell_Week"] = df_excel["PutAwayDate"].apply(
-    lambda x: get_dell_week_and_fy(x)[0]
-)
-df_excel["FY"] = df_excel["PutAwayDate"].apply(lambda x: get_dell_week_and_fy(x)[1])
-df_excel["Quarter"] = df_excel["PutAwayDate"].apply(get_quarter)
-df_excel["OrderType"] = df_excel["EDI_Order_Type"].apply(get_order_type)
-
-
-# 데이터베이스에 데이터 삽입
-def insert_data_into_db(df):
-    conn = mysql.connector.connect(**db_config)
-    cursor = conn.cursor()
-    for _, row in df.iterrows():
-        cursor.execute(
-            """
-        INSERT INTO Receiving_TAT_Report (ReceiptNo, Replen_Balance_Order_No, Cust_Sys_No,
-                                          Allocated_Part_No, EDI_Order_Type, Ship_From_Code,
-                                          Ship_To_Code, Country, Quantity, PutAwayDate,
-                                          Dell_Week, FY, Quarter, OrderType)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE 
-            Replen_Balance_Order_No=VALUES(Replen_Balance_Order_No),
-            Cust_Sys_No=VALUES(Cust_Sys_No),
-            Allocated_Part_No=VALUES(Allocated_Part_No),
-            EDI_Order_Type=VALUES(EDI_Order_Type),
-            Ship_From_Code=VALUES(Ship_From_Code),
-            Ship_To_Code=VALUES(Ship_To_Code),
-            Country=VALUES(Country),
-            Quantity=VALUES(Quantity),
-            PutAwayDate=VALUES(PutAwayDate),
-            Dell_Week=VALUES(Dell_Week),
-            FY=VALUES(FY),
-            Quarter=VALUES(Quarter),
-            OrderType=VALUES(OrderType)
-        """,
-            (
-                row["ReceiptNo"],
-                row["Replen_Balance_Order_No"],
-                row["Cust_Sys_No"],
-                row["Allocated_Part_No"],
-                row["EDI_Order_Type"],
-                row["Ship_From_Code"],
-                row["Ship_To_Code"],
-                row["Country"],
-                row["Quantity"],
-                row["PutAwayDate"],
-                row["Dell_Week"],
-                row["FY"],
-                row["Quarter"],
-                row["OrderType"],
-            ),
-        )
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-
-# 데이터 삽입
-insert_data_into_db(df_excel)
-
-
-# 데이터베이스에서 데이터 가져오기
-def fetch_from_mysql():
-    conn = mysql.connector.connect(**db_config)
-    query = """
-    SELECT 
-        ReceiptNo, 
-        Replen_Balance_Order_No, 
-        Cust_Sys_No, 
-        Allocated_Part_No, 
-        EDI_Order_Type, 
-        Ship_From_Code, 
-        Ship_To_Code, 
-        Country, 
-        Quantity, 
-        PutAwayDate,
-        Dell_Week,
-        FY,
-        Quarter,
-        OrderType
-    FROM Receiving_TAT_Report
-    """
-    df_db = pd.read_sql(query, conn)
-    conn.close()
-    return df_db
-
-
-# 데이터 비교
-def compare_dataframes(df1, df2):
-    # 필요한 컬럼만 선택
-    columns_to_compare = [
-        "ReceiptNo",
-        "Replen_Balance_Order_No",
-        "Cust_Sys_No",
-        "Allocated_Part_No",
-        "EDI_Order_Type",
-        "Ship_From_Code",
-        "Ship_To_Code",
-        "Country",
-        "Quantity",
-        "PutAwayDate",
-        "Dell_Week",
-        "FY",
-        "Quarter",
-        "OrderType",
-    ]
-
-    df1 = df1[columns_to_compare]
-    df2 = df2[columns_to_compare]
-
-    # 데이터 유형 맞추기
-    df1["Replen_Balance_Order_No"] = df1["Replen_Balance_Order_No"].astype(str)
-    df2["Replen_Balance_Order_No"] = df2["Replen_Balance_Order_No"].astype(str)
-
-    df1["PutAwayDate"] = pd.to_datetime(df1["PutAwayDate"])
-    df2["PutAwayDate"] = pd.to_datetime(df2["PutAwayDate"])
-
-    # 비교
-    comparison = df1.merge(df2, indicator=True, how="outer")
-    difference = comparison[comparison["_merge"] != "both"]
-    return difference
-
-
-# 데이터 비교 수행
-df_db = fetch_from_mysql()
-differences = compare_dataframes(df_excel, df_db)
-
-# 비교 결과 출력
-if differences.empty:
-    print("엑셀 데이터와 데이터베이스 데이터가 정확히 일치합니다.")
-else:
-    print("엑셀 데이터와 데이터베이스 데이터가 일치하지 않습니다.")
-    print(differences)
+if __name__ == "__main__":
+    excel_data = get_excel_data(excel_file_path)
+    query = "SELECT * FROM Receiving_TAT_Report"
+    db_data = get_database_data(query)
+    
+    differences = compare_data(excel_data, db_data)
+    if differences.empty:
+        print("엑셀 파일과 데이터베이스 데이터가 일치합니다.")
+    else:
+        print("엑셀 파일과 데이터베이스 데이터가 일치하지 않습니다. 차이점은 다음과 같습니다:")
+        print(differences)
