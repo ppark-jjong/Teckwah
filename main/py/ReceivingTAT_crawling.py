@@ -18,9 +18,9 @@ import login_crawling
 # 명령줄 인수로부터 날짜 및 로그인 정보를 받아옵니다.
 # username, password, startDate, endDate = sys.argv[1:]
 username = "jhypark-dir"
-password = "Hyeok970209@"
-startDate = "2024-06-15"
-endDate = "2024-06-21"
+password = "Hyeok970209!"
+startDate = "2024-06-22"
+endDate = "2024-06-28"
 
 # 다운로드 폴더 경로 설정
 download_folder = "C:\\MyMain\\Teckwah\\download\\xlsx_files"
