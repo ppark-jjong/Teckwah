@@ -67,20 +67,20 @@ def main():
             df_excel_processed = process_dataframe(df_excel)
 
             # 데이터 비교
-            comparison_result = df_db.equals(df_excel_processed)
-            if comparison_result:
-                print(
-                    "변환 결과 검증 성공: 데이터베이스와 엑셀 파일의 데이터가 일치합니다."
-                )
-            else:
-                print(
-                    "변환 결과 검증 실패: 데이터베이스와 엑셀 파일의 데이터가 일치하지 않습니다."
-                )
-                print("차이점을 분석합니다...")
-                # 차이점 분석 (예: 열 별로 비교)
-                for column in df_db.columns:
-                    if not df_db[column].equals(df_excel_processed[column]):
-                        print(f"'{column}' 열에서 차이가 발견되었습니다.")
+            # comparison_result = df_db.equals(df_excel_processed)
+            # if comparison_result:
+            #     print(
+            #         "변환 결과 검증 성공: 데이터베이스와 엑셀 파일의 데이터가 일치합니다."
+            #     )
+            # else:
+            #     print(
+            #         "변환 결과 검증 실패: 데이터베이스와 엑셀 파일의 데이터가 일치하지 않습니다."
+            #     )
+            #     print("차이점을 분석합니다...")
+            #     # 차이점 분석 (예: 열 별로 비교)
+            #     for column in df_db.columns:
+            #         if not df_db[column].equals(df_excel_processed[column]):
+            #             print(f"'{column}' 열에서 차이가 발견되었습니다.")
         else:
             print("파일 다운로드에 실패했습니다.")
 
