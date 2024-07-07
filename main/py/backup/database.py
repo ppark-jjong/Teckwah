@@ -2,20 +2,13 @@ import mysql.connector
 from mysql.connector import pooling
 from mysql.connector import Error
 import pandas as pd
-from config import (
-    DB_CONFIG,
-    POOL_NAME,
-    POOL_SIZE,
-    ORDER_TYPE_TABLE,
-    RECEIVING_TAT_REPORT_TABLE,
-    ORDER_TYPE_MAPPING,
-)
-
-
+from config import DB_CONFIG, POOL_NAME, POOL_SIZE, ORDER_TYPE_TABLE, RECEIVING_TAT_REPORT_TABLE, ORDER_TYPE_MAPPING
 class MySQLConnectionPool:
     def __init__(self):
         self.pool = mysql.connector.pooling.MySQLConnectionPool(
-            pool_name=POOL_NAME, pool_size=POOL_SIZE, **DB_CONFIG
+            pool_name=POOL_NAME,
+            pool_size=POOL_SIZE,
+            **DB_CONFIG
         )
 
     def __enter__(self):
@@ -48,7 +41,6 @@ class MySQLConnectionPool:
             print(f"대량 쿼리 실행 실패: {e}")
             self.connection.rollback()
 
-
 def upload_to_mysql(df):
     with MySQLConnectionPool() as conn:
         # Insert OrderType data
@@ -59,33 +51,17 @@ def upload_to_mysql(df):
                 VALUES (%s, %s)
                 ON DUPLICATE KEY UPDATE Detailed_Order_Type=VALUES(Detailed_Order_Type)
                 """,
-                (edi_type, detailed_type),
+                (edi_type, detailed_type)
             )
 
         # Insert Receiving_TAT_Report data
         insert_columns = [
-            "ReceiptNo",
-            "Replen_Balance_Order",
-            "Cust_Sys_No",
-            "Allocated_Part",
-            "EDI_Order_Type",
-            "ShipFromCode",
-            "ShipToCode",
-            "Country",
-            "Quantity",
-            "PutAwayDate",
-            "FY",
-            "Quarter",
-            "Month",
-            "Week",
-            "OrderType",
-            "Count_RC",
-            "Count_PO",
+            "ReceiptNo", "Replen_Balance_Order", "Cust_Sys_No", "Allocated_Part", "EDI_Order_Type",
+            "ShipFromCode", "ShipToCode", "Country", "Quantity", "PutAwayDate",
+            "FY", "Quarter", "Month", "Week", "OrderType", "Count_RC", "Count_PO"
         ]
         insert_placeholders = ", ".join(["%s"] * len(insert_columns))
-        update_placeholders = ", ".join(
-            [f"{col}=VALUES({col})" for col in insert_columns[1:]]
-        )
+        update_placeholders = ", ".join([f"{col}=VALUES({col})" for col in insert_columns[1:]])
 
         insert_query = f"""
             INSERT INTO {RECEIVING_TAT_REPORT_TABLE} ({", ".join(insert_columns)}) 
@@ -93,26 +69,17 @@ def upload_to_mysql(df):
             ON DUPLICATE KEY UPDATE {update_placeholders}
         """
 
-        # 필요한 열만 선택하고, 없는 열은 None으로 채움
-        df_to_insert = df.reindex(columns=insert_columns, fill_value=None)
-    # 'Month' 열의 길이를 2자로 제한
-        if "Month" in df.columns:
-            df["Month"] = df["Month"].astype(str).str[:2]
-
         conn.executemany(
             insert_query,
-            df_to_insert.where(pd.notnull(df_to_insert), None).values.tolist(),
+            df[insert_columns].where(pd.notnull(df), None).values.tolist()
         )
-
 
 def get_db_data():
     with MySQLConnectionPool() as conn:
         conn.execute_query(f"SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}")
-        return pd.DataFrame(
-            conn.cursor.fetchall(), columns=[i[0] for i in conn.cursor.description]
-        )
-
-
+        return pd.DataFrame(conn.cursor.fetchall(), columns=[i[0] for i in conn.cursor.description])
+    
+    
 def create_tables():
     order_type_table = f"""
     CREATE TABLE IF NOT EXISTS {ORDER_TYPE_TABLE} (
