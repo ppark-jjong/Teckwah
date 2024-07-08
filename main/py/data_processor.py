@@ -26,21 +26,26 @@ def get_quarter(date):
 
 
 def process_dataframe(df):
+    # 원본 컬럼 이름 출력
+    print("Original column names:", df.columns.tolist())
+
     # 컬럼 이름 변경
-    df = df.rename(
-        columns={
-            "Customer Order No": "Replen_Balance_Order",
-            "PO No": "Cust_Sys_No",
-            "Part": "Allocated_Part",
-            "EDI Order Type": "EDI_Order_Type",
-            "Ship From": "ShipFromCode",
-            "Ship to": "ShipToCode",
-            "Dell-Week": "Week",
-            "Order Type": "OrderType",
-            "Count RC": "Count_RC",
-            "Count PO": "Count_PO",
-        }
-    )
+    column_mapping = {
+        "Replen/Balance Order#": "Replen_Balance_Order",
+        "Cust Sys No": "Cust_Sys_No",
+        "Allocated Part#": "Allocated_Part",
+        "EDI Order Type": "EDI_Order_Type",
+        "Ship From": "ShipFromCode",
+        "Ship to": "ShipToCode",
+        "Dell-Week": "Week",
+        "Order Type": "OrderType",
+        "Count RC": "Count_RC",
+        "Count PO": "Count_PO",
+    }
+    df = df.rename(columns=column_mapping)
+
+    # 변경 후 컬럼 이름 출력
+    print("Renamed column names:", df.columns.tolist())
 
     # 필요한 컬럼만 선택
     columns_to_keep = [
@@ -67,20 +72,29 @@ def process_dataframe(df):
     existing_columns = [col for col in columns_to_keep if col in df.columns]
     df = df[existing_columns]
 
-    # 데이터 타입 변환
+    # 데이터 타입 변환 및 NULL 처리
     if "Quantity" in df.columns:
-        df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").astype("Int64")
+        df["Quantity"] = (
+            pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype("Int64")
+        )
     if "PutAwayDate" in df.columns:
         df["PutAwayDate"] = pd.to_datetime(df["PutAwayDate"], errors="coerce")
     if "Count_RC" in df.columns:
-        df["Count_RC"] = pd.to_numeric(df["Count_RC"], errors="coerce").astype("Int32")
+        df["Count_RC"] = (
+            pd.to_numeric(df["Count_RC"], errors="coerce").fillna(0).astype("Int32")
+        )
     if "Count_PO" in df.columns:
-        df["Count_PO"] = pd.to_numeric(df["Count_PO"], errors="coerce").astype("Int32")
+        df["Count_PO"] = (
+            pd.to_numeric(df["Count_PO"], errors="coerce").fillna(0).astype("Int32")
+        )
 
-    # 'Week' 열이 없다면 'Dell-Week'에서 생성
-    if "Week" not in df.columns and "Dell-Week" in df.columns:
-        df["Week"] = df["Dell-Week"]
-    # 'Month' 열을 2자리 숫자 형식으로 변환
+    # 'FY' 열 처리
+    if "FY" not in df.columns and "PutAwayDate" in df.columns:
+        df["FY"] = df["PutAwayDate"].apply(
+            lambda x: f"FY{x.year % 100:02d}" if pd.notnull(x) else None
+        )
+
+    # 'Month' 열 처리
     if "Month" in df.columns:
         df["Month"] = (
             pd.to_numeric(df["Month"], errors="coerce")
@@ -89,7 +103,7 @@ def process_dataframe(df):
             .astype(str)
             .str.zfill(2)
         )
-    elif "M" in df.columns:  # 'M' 열이 있다면 이를 'Month'로 사용
+    elif "M" in df.columns:
         df["Month"] = (
             pd.to_numeric(df["M"], errors="coerce")
             .fillna(0)
@@ -97,13 +111,20 @@ def process_dataframe(df):
             .astype(str)
             .str.zfill(2)
         )
-    else:
-        df["Month"] = df["PutAwayDate"].dt.strftime("%m")  # PutAwayDate에서 월 추출
+    elif "PutAwayDate" in df.columns:
+        df["Month"] = df["PutAwayDate"].dt.strftime("%m")
 
-    # 'Count_RC'와 'Count_PO' 열이 없다면 생성
-    if "Count_RC" not in df.columns:
-        df["Count_RC"] = 1
-    if "Count_PO" not in df.columns:
-        df["Count_PO"] = 1
+    # NULL 값 처리
+    for col in df.columns:
+        if df[col].dtype == "object":
+            df[col] = df[col].fillna("")
+        elif df[col].dtype in ["int64", "float64"]:
+            df[col] = df[col].fillna(0)
+
+    # 처리된 데이터의 샘플 출력
+    print("Processed data sample:")
+    print(df.head())
+    print("\nColumn info:")
+    print(df.info())
 
     return df

@@ -22,12 +22,12 @@ def main():
         create_tables()
 
         # raw data 파일 경로
-        raw_data_file = "C:/MyMain/Test/3.012_CS_Receiving_TAT_Report_accumulated.xlsb"
+        raw_data_file = "C:/MyMain/test/Dashboard_Raw Data.xlsb"
 
         print("데이터 로드 중...")
         if raw_data_file.endswith(".xlsb"):
             df = read_xlsb(
-                raw_data_file, "CS_Receiving_TAT"
+                raw_data_file, "Receiving_TAT"
             )  # 'CS Receiving TAT'는 시트 이름입니다. 실제 시트 이름으로 변경해주세요.
         else:
             raise ValueError("지원되지 않는 파일 형식입니다.")

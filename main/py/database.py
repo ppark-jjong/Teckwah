@@ -82,27 +82,36 @@ def upload_to_mysql(df):
             "Count_RC",
             "Count_PO",
         ]
-        insert_placeholders = ", ".join(["%s"] * len(insert_columns))
+
+        # 실제 존재하는 열만 선택
+        existing_columns = [col for col in insert_columns if col in df.columns]
+
+        insert_placeholders = ", ".join(["%s"] * len(existing_columns))
         update_placeholders = ", ".join(
-            [f"{col}=VALUES({col})" for col in insert_columns[1:]]
+            [f"{col}=VALUES({col})" for col in existing_columns[1:]]
         )
 
         insert_query = f"""
-            INSERT INTO {RECEIVING_TAT_REPORT_TABLE} ({", ".join(insert_columns)}) 
+            INSERT INTO {RECEIVING_TAT_REPORT_TABLE} ({", ".join(existing_columns)}) 
             VALUES ({insert_placeholders})
             ON DUPLICATE KEY UPDATE {update_placeholders}
         """
 
-        # 필요한 열만 선택하고, 없는 열은 None으로 채움
-        df_to_insert = df.reindex(columns=insert_columns, fill_value=None)
-    # 'Month' 열의 길이를 2자로 제한
-        if "Month" in df.columns:
-            df["Month"] = df["Month"].astype(str).str[:2]
+        # 존재하는 열만 선택하고, 없는 열은 None으로 채움
+        df_to_insert = df.reindex(columns=existing_columns, fill_value=None)
 
-        conn.executemany(
-            insert_query,
-            df_to_insert.where(pd.notnull(df_to_insert), None).values.tolist(),
-        )
+        # 'Month' 열의 길이를 2자로 제한 (만약 존재한다면)
+        if "Month" in df_to_insert.columns:
+            df_to_insert["Month"] = df_to_insert["Month"].astype(str).str[:2]
+
+        # None 값을 MySQL의 NULL로 변환
+        data_to_insert = df_to_insert.where(
+            df_to_insert.notnull(), None
+        ).values.tolist()
+
+        conn.executemany(insert_query, data_to_insert)
+
+    print(f"데이터베이스에 {len(data_to_insert)}개의 행이 업로드되었습니다.")
 
 
 def get_db_data():
