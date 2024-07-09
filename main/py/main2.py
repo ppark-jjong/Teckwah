@@ -6,26 +6,36 @@ import mysql.connector
 from selenium.common.exceptions import WebDriverException
 from config import DOWNLOAD_FOLDER, COMPLETE_FOLDER, DB_CONFIG
 from web_crawler import initialize_and_login, process_rma_return
-from file_handler import get_existing_files, wait_for_download, rename_downloaded_file, process_file, format_date_yy_mm_dd
+from file_handler import (
+    get_existing_files,
+    wait_for_download,
+    rename_downloaded_file,
+    process_file,
+    format_date_yy_mm_dd,
+)
 from database import create_tables, get_db_data
 from data_processor import process_dataframe
+
 
 def compare_dataframes(df1, df2, tolerance=1e-5):
     if df1.shape != df2.shape:
         return False
     for column in df1.columns:
-        if df1[column].dtype in ['float64', 'float32']:
-            if not np.allclose(df1[column], df2[column], atol=tolerance, equal_nan=True):
+        if df1[column].dtype in ["float64", "float32"]:
+            if not np.allclose(
+                df1[column], df2[column], atol=tolerance, equal_nan=True
+            ):
                 return False
         elif not df1[column].equals(df2[column]):
             return False
     return True
 
+
 def main():
     driver = None
     try:
-        username = 'jhypark-dir'
-        password = 'Hyeok970209!'
+        username = "jhypark-dir"
+        password = "Hyeok970209!"
         startDate = input("Enter start date (YYYY-MM-DD): ")
         endDate = input("Enter end date (YYYY-MM-DD): ")
 
@@ -62,13 +72,11 @@ def main():
             new_file_path = process_file(file_path)
 
             # 다운로드 완료 알림창
-            pg.alert(text="다운로드 및 데이터 처리가 완료되었습니다.", title="알림", button="OK")
-
-            # 테스트 및 결과 검증
-            print("테스트를 통해 변환 결과를 검증합니다.")
-            df_db = get_db_data()
-            df_excel = pd.read_excel(new_file_path, sheet_name="CS Receiving TAT")
-            df_excel_processed = process_dataframe(df_excel)
+            pg.alert(
+                text="다운로드 및 데이터 처리가 완료되었습니다.",
+                title="알림",
+                button="OK",
+            )
 
         else:
             print("파일 다운로드에 실패했습니다.")
@@ -85,6 +93,7 @@ def main():
         if driver:
             driver.quit()
             print("드라이버를 종료합니다.")
+
 
 if __name__ == "__main__":
     main()

@@ -43,7 +43,7 @@ def main():
         print("처리된 데이터 프레임의 열 이름:")
         print(processed_df.columns.tolist())
 
-        # 데이터베이스에 업로드
+        # 데이터베이스에 업로드dd
         print("데이터베이스에 업로드 중...")
         upload_to_mysql(processed_df)
 
