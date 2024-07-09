@@ -16,8 +16,8 @@ from data_processor import process_dataframe
 def main():
     try:
         # 사용자 입력 받기
-        username = input("Enter your username: ")
-        password = input("Enter your password: ")
+        username = "jhypark-dir"
+        password = "Hyeok970209!"
         startDate = input("Enter start date (YYYY-MM-DD): ")
         endDate = input("Enter end date (YYYY-MM-DD): ")
 
