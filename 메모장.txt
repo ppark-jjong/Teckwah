@@ -9,6 +9,7 @@ web_crawler.py: 웹 크롤링 관련 기능
 data_processor.py: 데이터 처리 관련 기능
 file_handler.py: 파일 처리 관련 기능
 main.py: 메인 실행 스크립트
+login_crawling.py : 크롤링을 위한 처리 관련 기능
 
 
 주당 100KB 기준 연간 데이터 양:

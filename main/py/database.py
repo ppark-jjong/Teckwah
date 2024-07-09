@@ -62,7 +62,7 @@ def upload_to_mysql(df):
                 (edi_type, detailed_type),
             )
 
-        # Insert Receiving_TAT_Report data
+        # Receiving_TAT_Report 데이터 삽입
         insert_columns = [
             "ReceiptNo",
             "Replen_Balance_Order",
@@ -88,7 +88,11 @@ def upload_to_mysql(df):
 
         insert_placeholders = ", ".join(["%s"] * len(existing_columns))
         update_placeholders = ", ".join(
-            [f"{col}=VALUES({col})" for col in existing_columns[1:]]
+            [
+                f"{col}=VALUES({col})"
+                for col in existing_columns
+                if col not in ["ReceiptNo", "Replen_Balance_Order", "Cust_Sys_No"]
+            ]
         )
 
         insert_query = f"""
@@ -131,7 +135,7 @@ def create_tables():
     """
     receiving_tat_table = f"""
     CREATE TABLE IF NOT EXISTS {RECEIVING_TAT_REPORT_TABLE} (
-        ReceiptNo VARCHAR(255) PRIMARY KEY,
+        ReceiptNo VARCHAR(255),
         Replen_Balance_Order VARCHAR(255),
         Cust_Sys_No VARCHAR(255),
         Allocated_Part VARCHAR(255),
@@ -148,6 +152,7 @@ def create_tables():
         OrderType VARCHAR(255),
         Count_RC INT,
         Count_PO INT,
+        PRIMARY KEY (ReceiptNo, Replen_Balance_Order, Cust_Sys_No),
         FOREIGN KEY (EDI_Order_Type) REFERENCES OrderType(EDI_Order_Type)
     )
     """

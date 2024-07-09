@@ -29,48 +29,32 @@ def process_dataframe(df):
     # 원본 컬럼 이름 출력
     print("Original column names:", df.columns.tolist())
 
-    # 컬럼 이름 변경
+    # 컬럼 이름 변경 (실제 존재하는 컬럼만)
     column_mapping = {
+        "ReceiptNo": "ReceiptNo",
         "Replen/Balance Order#": "Replen_Balance_Order",
         "Cust Sys No": "Cust_Sys_No",
         "Allocated Part#": "Allocated_Part",
         "EDI Order Type": "EDI_Order_Type",
-        "Ship From": "ShipFromCode",
-        "Ship to": "ShipToCode",
-        "Dell-Week": "Week",
-        "Order Type": "OrderType",
-        "Count RC": "Count_RC",
-        "Count PO": "Count_PO",
+        "ShipFromCode": "ShipFromCode",
+        "ShipToCode": "ShipToCode",
+        "Country": "Country",
+        "Region": "Region",
+        "Quantity": "Quantity",
+        "ActualPhysicalReceiptDate": "ActualPhysicalReceiptDate",
+        "PutAwayDate": "PutAwayDate",
+        "Meet KPI": "Meet_KPI",
+        "PutAwayDate - ActualPhysicalReceiptDate (In Mins)": "PutAway_Receipt_Diff_Mins",
+        "Inbound KPI": "Inbound_KPI",
     }
-    df = df.rename(columns=column_mapping)
+    df = df.rename(
+        columns={
+            col: column_mapping[col] for col in df.columns if col in column_mapping
+        }
+    )
 
     # 변경 후 컬럼 이름 출력
     print("Renamed column names:", df.columns.tolist())
-
-    # 필요한 컬럼만 선택
-    columns_to_keep = [
-        "ReceiptNo",
-        "Replen_Balance_Order",
-        "Cust_Sys_No",
-        "Allocated_Part",
-        "EDI_Order_Type",
-        "ShipFromCode",
-        "ShipToCode",
-        "Country",
-        "Quantity",
-        "PutAwayDate",
-        "FY",
-        "Quarter",
-        "Month",
-        "Week",
-        "OrderType",
-        "Count_RC",
-        "Count_PO",
-    ]
-
-    # 실제 존재하는 열만 선택
-    existing_columns = [col for col in columns_to_keep if col in df.columns]
-    df = df[existing_columns]
 
     # 데이터 타입 변환 및 NULL 처리
     if "Quantity" in df.columns:
@@ -79,40 +63,29 @@ def process_dataframe(df):
         )
     if "PutAwayDate" in df.columns:
         df["PutAwayDate"] = pd.to_datetime(df["PutAwayDate"], errors="coerce")
-    if "Count_RC" in df.columns:
-        df["Count_RC"] = (
-            pd.to_numeric(df["Count_RC"], errors="coerce").fillna(0).astype("Int32")
-        )
-    if "Count_PO" in df.columns:
-        df["Count_PO"] = (
-            pd.to_numeric(df["Count_PO"], errors="coerce").fillna(0).astype("Int32")
+    if "ActualPhysicalReceiptDate" in df.columns:
+        df["ActualPhysicalReceiptDate"] = pd.to_datetime(
+            df["ActualPhysicalReceiptDate"], errors="coerce"
         )
 
-    # 'FY' 열 처리
-    if "FY" not in df.columns and "PutAwayDate" in df.columns:
+    # 날짜 관련 컬럼 추가 (PutAwayDate 기준)
+    if "PutAwayDate" in df.columns:
         df["FY"] = df["PutAwayDate"].apply(
             lambda x: f"FY{x.year % 100:02d}" if pd.notnull(x) else None
         )
-
-    # 'Month' 열 처리
-    if "Month" in df.columns:
-        df["Month"] = (
-            pd.to_numeric(df["Month"], errors="coerce")
-            .fillna(0)
-            .astype(int)
-            .astype(str)
-            .str.zfill(2)
-        )
-    elif "M" in df.columns:
-        df["Month"] = (
-            pd.to_numeric(df["M"], errors="coerce")
-            .fillna(0)
-            .astype(int)
-            .astype(str)
-            .str.zfill(2)
-        )
-    elif "PutAwayDate" in df.columns:
+        df["Week"] = df["PutAwayDate"].dt.strftime("WK%U")
+        df["Quarter"] = df["PutAwayDate"].dt.to_period("Q").dt.strftime("Q%q")
         df["Month"] = df["PutAwayDate"].dt.strftime("%m")
+
+    # CountPO 계산 (ReceiptNo 기준)
+    df["Count_PO"] = df.groupby("ReceiptNo")["ReceiptNo"].transform("count")
+
+    # CountRC 계산 (Cust_Sys_No 기준)
+    df["Count_RC"] = df.groupby("Cust_Sys_No")["Cust_Sys_No"].transform("count")
+
+    # OrderType 컬럼 추가 (EDI Order Type 기준)
+    df["OrderType"] = df["EDI_Order_Type"].map(ORDER_TYPE_MAPPING)
+    df.loc[df["OrderType"].isna(), "OrderType"] = "Unknown"
 
     # NULL 값 처리
     for col in df.columns:
@@ -120,11 +93,5 @@ def process_dataframe(df):
             df[col] = df[col].fillna("")
         elif df[col].dtype in ["int64", "float64"]:
             df[col] = df[col].fillna(0)
-
-    # 처리된 데이터의 샘플 출력
-    print("Processed data sample:")
-    print(df.head())
-    print("\nColumn info:")
-    print(df.info())
 
     return df

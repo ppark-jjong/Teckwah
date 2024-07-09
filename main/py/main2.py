@@ -1,23 +1,31 @@
+import os
 import pyautogui as pg
 import pandas as pd
-from config import DOWNLOAD_FOLDER, COMPLETE_FOLDER
+import numpy as np
+import mysql.connector
+from selenium.common.exceptions import WebDriverException
+from config import DOWNLOAD_FOLDER, COMPLETE_FOLDER, DB_CONFIG
 from web_crawler import initialize_and_login, process_rma_return
-from file_handler import (
-    get_existing_files,
-    wait_for_download,
-    rename_downloaded_file,
-    process_file,
-    format_date_yy_mm_dd,
-)
+from file_handler import get_existing_files, wait_for_download, rename_downloaded_file, process_file, format_date_yy_mm_dd
 from database import create_tables, get_db_data
 from data_processor import process_dataframe
 
+def compare_dataframes(df1, df2, tolerance=1e-5):
+    if df1.shape != df2.shape:
+        return False
+    for column in df1.columns:
+        if df1[column].dtype in ['float64', 'float32']:
+            if not np.allclose(df1[column], df2[column], atol=tolerance, equal_nan=True):
+                return False
+        elif not df1[column].equals(df2[column]):
+            return False
+    return True
 
 def main():
+    driver = None
     try:
-        # 사용자 입력 받기
-        username = "jhypark-dir"
-        password = "Hyeok970209!"
+        username = 'jhypark-dir'
+        password = 'Hyeok970209!'
         startDate = input("Enter start date (YYYY-MM-DD): ")
         endDate = input("Enter end date (YYYY-MM-DD): ")
 
@@ -45,55 +53,38 @@ def main():
         print("다운로드된 파일의 이름을 변경합니다.")
         file_path = rename_downloaded_file(DOWNLOAD_FOLDER, new_files, new_name)
 
-        create_tables()
         if file_path:
+            # 테이블 생성
+            create_tables()
+
             # 다운로드된 파일 처리
             print("다운로드된 파일을 처리합니다.")
-            new_file_path = process_file(file_path)  # 새 파일 경로 받기
+            new_file_path = process_file(file_path)
 
             # 다운로드 완료 알림창
-            pg.alert(
-                text="다운로드 및 데이터 처리가 완료되었습니다.",
-                title="알림",
-                button="OK",
-            )
+            pg.alert(text="다운로드 및 데이터 처리가 완료되었습니다.", title="알림", button="OK")
 
             # 테스트 및 결과 검증
             print("테스트를 통해 변환 결과를 검증합니다.")
             df_db = get_db_data()
-            df_excel = pd.read_excel(
-                new_file_path, sheet_name="CS Receiving TAT"
-            )  # 새 파일 경로 사용
+            df_excel = pd.read_excel(new_file_path, sheet_name="CS Receiving TAT")
             df_excel_processed = process_dataframe(df_excel)
 
-            # 데이터 비교
-            comparison_result = df_db.equals(df_excel_processed)
-            if comparison_result:
-                print(
-                    "변환 결과 검증 성공: 데이터베이스와 엑셀 파일의 데이터가 일치합니다."
-                )
-            else:
-                print(
-                    "변환 결과 검증 실패: 데이터베이스와 엑셀 파일의 데이터가 일치하지 않습니다."
-                )
-                print("차이점을 분석합니다...")
-                # 차이점 분석 (예: 열 별로 비교)
-                for column in df_db.columns:
-                    if not df_db[column].equals(df_excel_processed[column]):
-                        print(f"'{column}' 열에서 차이가 발견되었습니다.")
         else:
             print("파일 다운로드에 실패했습니다.")
 
+    except FileNotFoundError as e:
+        print(f"파일을 찾을 수 없습니다: {e}")
+    except mysql.connector.Error as e:
+        print(f"데이터베이스 오류: {e}")
+    except WebDriverException as e:
+        print(f"웹 드라이버 오류: {e}")
     except Exception as e:
-        error_message = f"프로그램 실행 중 오류 발생: {str(e)}"
-        print(error_message)
-        pg.alert(text=error_message, title="Error", button="OK")
+        print(f"예상치 못한 오류 발생: {e}")
     finally:
-        # 드라이버 종료
-        if "driver" in locals():
+        if driver:
             driver.quit()
             print("드라이버를 종료합니다.")
-
 
 if __name__ == "__main__":
     main()
