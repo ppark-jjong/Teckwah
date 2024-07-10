@@ -65,13 +65,13 @@ if __name__ == "__main__":
     export_to_csv(db_data, csv_file_path)
     
     email_config = {
-        'from_email': 'jonghyeok_park@teckwah.co.kr',        # 보내는 사람 이메일 주소
-        'to_email': 'parkjonghyeok2000@gmail.com',      # 받는 사람 이메일 주소
-        'subject': 'Exported Data',
+        'from_email': 'parkjonghyeok2000@gmail.com',        # 보내는 사람 이메일 주소
+        'to_email': 'jonghp1357@naver.com',      # 받는 사람 이메일 주소
+        'subject': '이번주 유지 데이터 입니다.',
         'body': 'Here is the exported data from the database.',
-        'smtp_server': 'smtp.office365.com',            # Outlook SMTP 서버 주소
-        'smtp_port': 587,                               # Outlook SMTP 포트 번호
-        'password': 'Hyeok970209@'                 # 앱 비밀번호 사용
+        'smtp_server': 'smtp.gmail.com', #gmail smtp 공식 서버 주소 (교체 x)         
+        'smtp_port': 587,                             
+        'password': 'egih cqix vpdl ixzh' #앱 비밀번호 생성 후 앱 비밀번호 사용           
     }
     
     send_email_with_attachment(email_config, csv_file_path)
