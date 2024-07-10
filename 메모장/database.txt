@@ -11,6 +11,7 @@ from config import (
     ORDER_TYPE_MAPPING,
 )
 
+
 class MySQLConnectionPool:
     def __init__(self):
         self.pool = mysql.connector.pooling.MySQLConnectionPool(
@@ -47,6 +48,7 @@ class MySQLConnectionPool:
             print(f"대량 쿼리 실행 실패: {e}")
             self.connection.rollback()
 
+
 def upload_to_mysql(df):
     with MySQLConnectionPool() as conn:
         # Insert OrderType data
@@ -77,7 +79,8 @@ def upload_to_mysql(df):
             "Month",
             "Week",
             "OrderType",
-            "Count_PO"
+            "Count_RC",
+            "Count_PO",
         ]
 
         # 실제 존재하는 열만 선택
@@ -114,12 +117,14 @@ def upload_to_mysql(df):
 
     print(f"데이터베이스에 {len(data_to_insert)}개의 행이 업로드되었습니다.")
 
+
 def get_db_data():
     with MySQLConnectionPool() as conn:
         conn.execute_query(f"SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}")
         return pd.DataFrame(
             conn.cursor.fetchall(), columns=[i[0] for i in conn.cursor.description]
         )
+
 
 def create_tables():
     order_type_table = f"""
@@ -145,6 +150,7 @@ def create_tables():
         Month VARCHAR(2),
         Week VARCHAR(10),
         OrderType VARCHAR(255),
+        Count_RC INT,
         Count_PO INT,
         PRIMARY KEY (ReceiptNo, Replen_Balance_Order, Cust_Sys_No),
         FOREIGN KEY (EDI_Order_Type) REFERENCES OrderType(EDI_Order_Type)

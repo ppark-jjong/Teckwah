@@ -109,10 +109,10 @@ def process_dataframe(df):
 
         logging.info("Data processing completed successfully")
 
-        # Cust Sys No만을 기준으로 Count_PO 계산
-        df["Count_PO"] = df.groupby("Cust_Sys_No")["Cust_Sys_No"].transform("count")
+        df["Count_PO"] = df.groupby(
+            ["ReceiptNo", "Replen_Balance_Order", "Cust_Sys_No"]
+        )["ReceiptNo"].transform("count")
 
-        logging.info("Count_PO calculation completed")
         logging.info("Data processing completed successfully")
         return df
 
@@ -134,4 +134,4 @@ def main_data_processing(df):
 if __name__ == "__main__":
     test_df = pd.read_excel("path_to_your_test_file.xlsx")
     processed_df = main_data_processing(test_df)
-    print(processed_df[["Cust_Sys_No", "Count_PO"]].head(10))  # Count_PO 결과 확인
+    print(processed_df.head())
