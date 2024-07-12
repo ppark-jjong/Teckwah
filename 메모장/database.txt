@@ -74,6 +74,7 @@ def upload_to_mysql(df):
             "Country",
             "Quantity",
             "PutAwayDate",
+            "InventoryDate",
             "FY",
             "Quarter",
             "Month",
@@ -103,14 +104,34 @@ def upload_to_mysql(df):
         # 존재하는 열만 선택하고, 없는 열은 None으로 채움
         df_to_insert = df.reindex(columns=existing_columns, fill_value=None)
 
-        # 'Month' 열의 길이를 2자로 제한 (만약 존재한다면)
+        # 'Month' 열의 길이를 2자로 제한
         if "Month" in df_to_insert.columns:
-            df_to_insert["Month"] = df_to_insert["Month"].astype(str).str[:2]
+            df_to_insert["Month"] = df_to_insert["Month"].astype(str).str.zfill(2)
 
-        # None 값을 MySQL의 NULL로 변환
-        data_to_insert = df_to_insert.where(
-            df_to_insert.notnull(), None
-        ).values.tolist()
+        # datetime 객체를 문자열로 변환
+        if "PutAwayDate" in df_to_insert.columns:
+            df_to_insert["PutAwayDate"] = df_to_insert["PutAwayDate"].dt.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+
+        # InventoryDate 처리
+        if "InventoryDate" in df_to_insert.columns:
+            df_to_insert["InventoryDate"] = pd.to_datetime(
+                df_to_insert["InventoryDate"], errors="coerce"
+            )
+            df_to_insert["InventoryDate"] = df_to_insert["InventoryDate"].dt.strftime(
+                "%Y-%m-%d"
+            )
+
+        if "Replen_Balance_Order" in df_to_insert.columns:
+            df_to_insert["Replen_Balance_Order"] = df_to_insert[
+                "Replen_Balance_Order"
+            ].astype(str)
+
+        # None 값과 NaT 값을 MySQL의 NULL로 변환
+        df_to_insert = df_to_insert.where(pd.notnull(df_to_insert), None)
+        df_to_insert = df_to_insert.replace({pd.NaT: None})
+        data_to_insert = df_to_insert.values.tolist()
 
         conn.executemany(insert_query, data_to_insert)
 
@@ -118,11 +139,16 @@ def upload_to_mysql(df):
 
 
 def get_db_data():
-    with MySQLConnectionPool() as conn:
-        conn.execute_query(f"SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}")
-        return pd.DataFrame(
-            conn.cursor.fetchall(), columns=[i[0] for i in conn.cursor.description]
-        )
+    try:
+        with MySQLConnectionPool() as conn:
+            query = f"SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}"
+            conn.execute_query(query)
+            result = conn.cursor.fetchall()
+            columns = [i[0] for i in conn.cursor.description]
+            return pd.DataFrame(result, columns=columns)
+    except Exception as e:
+        print(f"데이터베이스에서 데이터를 가져오는 중 오류 발생: {str(e)}")
+        return pd.DataFrame()
 
 
 def create_tables():
@@ -135,7 +161,7 @@ def create_tables():
     receiving_tat_table = f"""
     CREATE TABLE IF NOT EXISTS {RECEIVING_TAT_REPORT_TABLE} (
         ReceiptNo VARCHAR(255),
-        Replen_Balance_Order VARCHAR(255),
+        Replen_Balance_Order BIGINT,
         Cust_Sys_No VARCHAR(255),
         Allocated_Part VARCHAR(255),
         EDI_Order_Type VARCHAR(255),
@@ -144,6 +170,7 @@ def create_tables():
         Country VARCHAR(255),
         Quantity BIGINT,
         PutAwayDate DATETIME,
+        InventoryDate DATE,
         FY VARCHAR(20),
         Quarter VARCHAR(10),
         Month VARCHAR(2),

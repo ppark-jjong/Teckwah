@@ -1,9 +1,9 @@
 import pandas as pd
 from pyxlsb import open_workbook
-from config import DOWNLOAD_FOLDER, COMPLETE_FOLDER
+from config import DOWNLOAD_FOLDER, COMPLETE_FOLDER, DB_CONFIG, ORDER_TYPE_MAPPING, COLUMN_MAPPING
 from file_handler import process_file
 from database import create_tables, upload_to_mysql
-from data_processor import process_dataframe
+from data_processor import main_data_processing
 
 def read_xlsb(filepath, sheet_name):
     with open_workbook(filepath) as wb:
@@ -31,7 +31,12 @@ def main():
         print(df.columns.tolist())
 
         print("데이터 처리 중...")
-        processed_df = process_dataframe(df)
+        config = {
+            "DB_CONFIG": DB_CONFIG,
+            "ORDER_TYPE_MAPPING": ORDER_TYPE_MAPPING,
+            "COLUMN_MAPPING": COLUMN_MAPPING
+        }
+        processed_df = main_data_processing(df, config)
 
         print("처리된 데이터 프레임의 열 이름:")
         print(processed_df.columns.tolist())

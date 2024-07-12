@@ -37,11 +37,12 @@ class WebCrawler:
     def login(self, username: str, password: str) -> None:
         """
         웹사이트에 로그인합니다.
-
-        :param username: 사용자 이름
-        :param password: 비밀번호
         """
-        self._retry_action(self._perform_login, username, password)
+        try:
+            self._perform_login(username, password)
+        except (TimeoutException, NoSuchElementException, WebDriverException) as e:
+            logger.error(f"로그인 실패: {str(e)}")
+            raise
 
     def _perform_login(self, username: str, password: str) -> None:
         """실제 로그인 작업을 수행합니다."""
@@ -77,18 +78,61 @@ class WebCrawler:
         element.send_keys(Keys.RETURN)
 
     def process_rma_return(self, start_date: str, end_date: str) -> None:
-        """
-        RMA 반환 프로세스를 수행합니다.
-
-        :param start_date: 시작 날짜
-        :param end_date: 종료 날짜
-        """
-        self._retry_action(self._perform_rma_return, start_date, end_date)
+        """RMA 반환 프로세스를 수행합니다."""
+        try:
+            self._perform_rma_return(start_date, end_date)
+        except (TimeoutException, NoSuchElementException, WebDriverException) as e:
+            logger.error(f"RMA 반환 처리 실패: {str(e)}")
+            raise
 
     def _perform_rma_return(self, start_date: str, end_date: str) -> None:
         """실제 RMA 반환 프로세스를 수행합니다."""
-        # 기존의 process_rma_return 함수 내용을 여기에 구현
-        # 각 단계에서 WebDriverWait를 사용하여 요소가 나타날 때까지 기다림
+        try:
+            WebDriverWait(self.driver, WEBDRIVER_TIMEOUT).until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, "div.x-grid3-row:nth-child(28)")
+                )
+            )
+            elementName = self.driver.find_element(
+                By.CSS_SELECTOR, "div.x-grid3-row:nth-child(28)"
+            )
+            elementName.click()
+            action = ActionChains(self.driver)
+            action.context_click(elementName).perform()
+            time.sleep(1)
+            action.send_keys(Keys.DOWN).send_keys(Keys.ENTER).perform()
+
+            element_a = WebDriverWait(self.driver, WEBDRIVER_TIMEOUT).until(
+                EC.presence_of_element_located((By.ID, "ext-comp-1045"))
+            )
+            element_a.send_keys(start_date)
+
+            element_b = WebDriverWait(self.driver, WEBDRIVER_TIMEOUT).until(
+                EC.presence_of_element_located((By.ID, "ext-comp-1046"))
+            )
+            element_b.send_keys(end_date)
+
+            element_gen390 = WebDriverWait(self.driver, WEBDRIVER_TIMEOUT).until(
+                EC.presence_of_element_located((By.ID, "ext-gen371"))
+            )
+            element_gen390.click()
+            action.send_keys(Keys.ENTER).perform()
+
+            element_gen403 = WebDriverWait(self.driver, WEBDRIVER_TIMEOUT).until(
+                EC.presence_of_element_located((By.ID, "ext-gen384"))
+            )
+            element_gen403.click()
+            action.send_keys(Keys.DOWN).send_keys(Keys.DOWN).send_keys(
+                Keys.ENTER
+            ).perform()
+
+            element_confirm = WebDriverWait(self.driver, WEBDRIVER_TIMEOUT).until(
+                EC.presence_of_element_located((By.ID, "ext-gen339"))
+            )
+            element_confirm.click()
+        except (TimeoutException, NoSuchElementException, WebDriverException) as e:
+            logger.error(f"RMA 반환 처리 실패: {e.__class__.__name__} - {str(e)}")
+            raise
 
     def _retry_action(self, action, *args):
         """

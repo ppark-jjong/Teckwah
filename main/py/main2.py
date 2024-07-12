@@ -1,23 +1,37 @@
 import os
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import pandas as pd
-from config import DOWNLOAD_FOLDER, COMPLETE_FOLDER, DB_CONFIG, COLUMN_MAPPING, ORDER_TYPE_MAPPING
+from config import (
+    DOWNLOAD_FOLDER,
+    COMPLETE_FOLDER,
+    DB_CONFIG,
+    COLUMN_MAPPING,
+    ORDER_TYPE_MAPPING,
+)
 from web_crawler import initialize_and_login, WebCrawler
-from file_handler import get_existing_files, wait_for_download, rename_downloaded_file, process_file
+from file_handler import (
+    get_existing_files,
+    wait_for_download,
+    rename_downloaded_file,
+    process_file,
+)
 from database import create_tables, upload_to_mysql
 from data_processor import main_data_processing
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
+
 
 def main():
     config: Dict[str, Any] = {
-        'DOWNLOAD_FOLDER': DOWNLOAD_FOLDER,
-        'COMPLETE_FOLDER': COMPLETE_FOLDER,
-        'DB_CONFIG': DB_CONFIG,
-        'COLUMN_MAPPING': COLUMN_MAPPING,
-        'ORDER_TYPE_MAPPING': ORDER_TYPE_MAPPING
+        "DOWNLOAD_FOLDER": DOWNLOAD_FOLDER,
+        "COMPLETE_FOLDER": COMPLETE_FOLDER,
+        "DB_CONFIG": DB_CONFIG,
+        "COLUMN_MAPPING": COLUMN_MAPPING,
+        "ORDER_TYPE_MAPPING": ORDER_TYPE_MAPPING,
     }
 
     crawler: Optional[WebCrawler] = None
@@ -53,7 +67,9 @@ def main():
 
             # 다운로드된 파일 처리
             logger.info("다운로드된 파일을 처리합니다.")
-            new_file_path = process_file(file_path, COMPLETE_FOLDER, lambda df: main_data_processing(df, config))
+            new_file_path = process_file(
+                file_path, COMPLETE_FOLDER, lambda df: main_data_processing(df, config)
+            )
 
             if new_file_path:
                 # 처리된 데이터를 데이터베이스에 업로드
@@ -71,6 +87,7 @@ def main():
         if crawler:
             crawler.close()
             logger.info("웹 크롤러를 종료합니다.")
+
 
 if __name__ == "__main__":
     main()
