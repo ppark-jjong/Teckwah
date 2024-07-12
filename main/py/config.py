@@ -1,7 +1,7 @@
-import os
+from typing import Dict, Any
 
 # 데이터베이스 설정
-DB_CONFIG = {
+DB_CONFIG: Dict[str, Any] = {
     "host": "localhost",
     "database": "teckwah_test",
     "user": "root",
@@ -9,19 +9,20 @@ DB_CONFIG = {
     "allow_local_infile": True,
 }
 
-# 다운로드 폴더 경로 설정
-DOWNLOAD_FOLDER = "C:\\MyMain\\Teckwah\\download\\xlsx_files"
-COMPLETE_FOLDER = "C:\\MyMain\\Teckwah\\download\\xlsx_files_complete"
+# 폴더 경로 설정
+DOWNLOAD_FOLDER: str = "C:\\MyMain\\Teckwah\\download\\xlsx_files"
+COMPLETE_FOLDER: str = "C:\\MyMain\\Teckwah\\download\\xlsx_files_complete"
 
 # 연결 풀 설정
-POOL_NAME = "mypool"
-POOL_SIZE = 5
+POOL_NAME: str = "mypool"
+POOL_SIZE: int = 5
 
 # 타임아웃 설정
-DOWNLOAD_TIMEOUT = 120  # 초
+DOWNLOAD_TIMEOUT: int = 120  # 초
+WEBDRIVER_TIMEOUT: int = 30  # 초
 
 # 주문 유형 매핑
-ORDER_TYPE_MAPPING = {
+ORDER_TYPE_MAPPING: Dict[str, str] = {
     "BALANCE-IN": "P3",
     "REPLEN-IN": "P3",
     "PNAE-IN": "P1",
@@ -31,7 +32,7 @@ ORDER_TYPE_MAPPING = {
 }
 
 # 열 매핑
-COLUMN_MAPPING = {
+COLUMN_MAPPING: Dict[str, str] = {
     "ReceiptNo": "ReceiptNo",
     "Replen/Balance Order#": "Replen_Balance_Order",
     "Cust Sys No": "Cust_Sys_No",
@@ -45,9 +46,9 @@ COLUMN_MAPPING = {
 }
 
 # 테이블 이름
-ORDER_TYPE_TABLE = "OrderType"
-RECEIVING_TAT_REPORT_TABLE = "Receiving_TAT_Report"
+ORDER_TYPE_TABLE: str = "OrderType"
+RECEIVING_TAT_REPORT_TABLE: str = "Receiving_TAT_Report"
 
-# 폴더 생성
-os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
-os.makedirs(COMPLETE_FOLDER, exist_ok=True)
+# 웹 크롤링 설정
+MAX_RETRIES: int = 3
+RETRY_DELAY: int = 5  # 초

@@ -79,7 +79,6 @@ def upload_to_mysql(df):
             "Month",
             "Week",
             "OrderType",
-            "Count_RC",
             "Count_PO",
         ]
 
@@ -150,7 +149,6 @@ def create_tables():
         Month VARCHAR(2),
         Week VARCHAR(10),
         OrderType VARCHAR(255),
-        Count_RC INT,
         Count_PO INT,
         PRIMARY KEY (ReceiptNo, Replen_Balance_Order, Cust_Sys_No),
         FOREIGN KEY (EDI_Order_Type) REFERENCES OrderType(EDI_Order_Type)
@@ -160,3 +158,15 @@ def create_tables():
         conn.execute_query(order_type_table)
         conn.execute_query(receiving_tat_table)
     print("테이블 생성 완료")
+
+
+def get_data_by_date(start_date, end_date):
+    with MySQLConnectionPool() as conn:
+        query = f"""
+        SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}
+        WHERE PutAwayDate BETWEEN %s AND %s
+        """
+        conn.execute_query(query, (start_date, end_date))
+        return pd.DataFrame(
+            conn.cursor.fetchall(), columns=[i[0] for i in conn.cursor.description]
+        )
