@@ -14,20 +14,31 @@ from config import (
 
 class MySQLConnectionPool:
     def __init__(self):
-        self.pool = mysql.connector.pooling.MySQLConnectionPool(
-            pool_name=POOL_NAME, pool_size=POOL_SIZE, **DB_CONFIG
-        )
+        try:
+            self.pool = mysql.connector.pooling.MySQLConnectionPool(
+                pool_name=POOL_NAME, pool_size=POOL_SIZE, **DB_CONFIG
+            )
+            print("Connection pool created successfully")
+        except mysql.connector.Error as err:
+            print(f"Error creating connection pool: {err}")
+            raise
 
     def __enter__(self):
-        self.connection = self.pool.get_connection()
-        self.cursor = self.connection.cursor()
-        return self
+        try:
+            self.connection = self.pool.get_connection()
+            self.cursor = self.connection.cursor(buffered=True)
+            print("Connection acquired from pool")
+            return self
+        except mysql.connector.Error as err:
+            print(f"Error acquiring connection from pool: {err}")
+            raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.cursor:
             self.cursor.close()
         if self.connection:
             self.connection.close()
+        print("Connection returned to pool")
 
     def execute_query(self, query, params=None):
         try:
@@ -36,16 +47,18 @@ class MySQLConnectionPool:
             else:
                 self.cursor.execute(query)
             self.connection.commit()
-        except Error as e:
-            print(f"쿼리 실행 실패: {e}")
+            self.cursor.reset()  # 커서 재설정
+        except mysql.connector.Error as err:
+            print(f"쿼리 실행 실패: {err}")
             self.connection.rollback()
 
     def executemany(self, query, params):
         try:
             self.cursor.executemany(query, params)
             self.connection.commit()
-        except Error as e:
-            print(f"대량 쿼리 실행 실패: {e}")
+            self.cursor.reset()  # 커서 재설정
+        except mysql.connector.Error as err:
+            print(f"대량 쿼리 실행 실패: {err}")
             self.connection.rollback()
 
 
