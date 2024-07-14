@@ -90,11 +90,11 @@ class WebCrawler:
         try:
             WebDriverWait(self.driver, WEBDRIVER_TIMEOUT).until(
                 EC.presence_of_element_located(
-                    (By.CSS_SELECTOR, "div.x-grid3-row:nth-child(28)")
+                    (By.CSS_SELECTOR, "div:nth-child(28)")
                 )
             )
             elementName = self.driver.find_element(
-                By.CSS_SELECTOR, "div.x-grid3-row:nth-child(28)"
+                By.CSS_SELECTOR, "div:nth-child(28)"
             )
             elementName.click()
             action = ActionChains(self.driver)
