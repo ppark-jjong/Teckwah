@@ -1,37 +1,24 @@
 import pandas as pd
-from pyxlsb import open_workbook
-from config import (
-    DOWNLOAD_FOLDER,
-    COMPLETE_FOLDER,
-    DB_CONFIG,
-    ORDER_TYPE_MAPPING,
-    COLUMN_MAPPING,
-)
+from config import DOWNLOAD_FOLDER, COMPLETE_FOLDER, DB_CONFIG, ORDER_TYPE_MAPPING, COLUMN_MAPPING
 from file_handler import process_file
 from database import create_tables, upload_to_mysql
 from data_processor import main_data_processing
 
-
-def read_xlsb(filepath, sheet_name):
-    with open_workbook(filepath) as wb:
-        with wb.get_sheet(sheet_name) as sheet:
-            data = [row for row in sheet.rows()]
-
-    headers = [cell.v for cell in data[0]]
-    data = [[cell.v for cell in row] for row in data[1:]]
-    return pd.DataFrame(data, columns=headers)
-
+def read_excel(filepath, sheet_name):
+    try:
+        return pd.read_excel(filepath, sheet_name=sheet_name)
+    except Exception as e:
+        print(f"엑셀 파일 읽기 실패: {str(e)}")
+        raise
 
 def main():
     try:
         create_tables()
 
-        raw_data_file = "C:/MyMain/test/Dashboard_Raw Data.xlsb"
+        raw_data_file = "C:/MyMain/Teckwah/download/xlsx_files_complete/200629_200705_ReceivingTAT_report.xlsx"
         print("데이터 로드 중...")
-        if raw_data_file.endswith(".xlsb"):
-            df = read_xlsb(raw_data_file, "Receiving_TAT")
-        else:
-            raise ValueError("지원되지 않는 파일 형식입니다.")
+        
+        df = read_excel(raw_data_file, "CS Receiving TAT")
 
         print(f"로드된 데이터 행 수: {len(df)}")
         print("로드된 데이터 프레임의 열 이름:")
@@ -41,7 +28,7 @@ def main():
         config = {
             "DB_CONFIG": DB_CONFIG,
             "ORDER_TYPE_MAPPING": ORDER_TYPE_MAPPING,
-            "COLUMN_MAPPING": COLUMN_MAPPING,
+            "COLUMN_MAPPING": COLUMN_MAPPING
         }
         processed_df = main_data_processing(df, config)
 
@@ -55,7 +42,6 @@ def main():
 
     except Exception as e:
         print(f"오류 발생: {str(e)}")
-
 
 if __name__ == "__main__":
     main()

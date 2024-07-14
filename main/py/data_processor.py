@@ -61,6 +61,7 @@ class DataProcessor:
             df = self._map_order_type(df)
             df = self._handle_missing_values(df)
             df = self._calculate_count_po(df)
+            df = df[df['Country'] == 'KR']
 
             logger.info("Data processing completed successfully")
             return df
