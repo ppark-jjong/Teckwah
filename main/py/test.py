@@ -2,17 +2,20 @@ import pandas as pd
 import mysql.connector
 from mysql.connector import Error
 from config import DB_CONFIG, RECEIVING_TAT_REPORT_TABLE
+import pyxlsb
+
 
 def read_xlsb(filepath, sheet_name):
-    import pyxlsb
     with pyxlsb.open_workbook(filepath) as wb:
         with wb.get_sheet(sheet_name) as sheet:
             data = [[c.v for c in r] for r in sheet.rows()]
     return pd.DataFrame(data[1:], columns=data[0])
 
+
 def get_raw_data():
     raw_data_file = "C:/MyMain/test/Dashboard_Raw Data.xlsb"
     return read_xlsb(raw_data_file, "Receiving_TAT")
+
 
 def get_db_data():
     try:
@@ -33,92 +36,120 @@ def get_db_data():
         print(f"MySQL 연결 중 오류 발생: {e}")
         return pd.DataFrame()
 
+
 def create_composite_key(df):
-    return df["ReceiptNo"].astype(str) + "|" + df["Replen_Balance_Order"].astype(str) + "|" + df["Cust_Sys_No"].astype(str)
+    return (
+        df["ReceiptNo"].astype(str)
+        + "|"
+        + df["Replen_Balance_Order"].astype(str)
+        + "|"
+        + df["Cust_Sys_No"].astype(str)
+    )
+
+
+def preprocess_raw_data(raw_df):
+    raw_df = raw_df.rename(
+        columns={
+            "Replen/Balance Order#": "Replen_Balance_Order",
+            "Cust Sys No": "Cust_Sys_No",
+        }
+    )
+
+    # Replen_Balance_Order 컬럼 타입 처리
+    raw_df["Replen_Balance_Order"] = raw_df["Replen_Balance_Order"].astype(str)
+    raw_df["Replen_Balance_Order"] = raw_df["Replen_Balance_Order"].apply(
+        lambda x: x.split(".")[0] if "." in x else x
+    )
+
+    raw_df["composite_key"] = create_composite_key(raw_df)
+    raw_df["Count_PO"] = raw_df.groupby("composite_key")["composite_key"].transform(
+        "count"
+    )
+    return raw_df
+
 
 def compare_data(raw_df, db_df):
     print(f"원본 데이터 형태: {raw_df.shape}")
     print(f"DB 데이터 형태: {db_df.shape}")
 
     if db_df.empty:
-        print("데이터베이스에서 데이터를 가져오지 못했습니다. 데이터베이스 연결과 테이블을 확인해주세요.")
+        print(
+            "데이터베이스에서 데이터를 가져오지 못했습니다. 데이터베이스 연결과 테이블을 확인해주세요."
+        )
         return
 
-    # 컬럼 이름 일치시키기
-    raw_df = raw_df.rename(columns={
-        "Replen/Balance Order#": "Replen_Balance_Order",
-        "Cust Sys No": "Cust_Sys_No",
-    })
-
-    # 복합 키 생성
-    raw_df["composite_key"] = create_composite_key(raw_df)
+    raw_df = preprocess_raw_data(raw_df)
     db_df["composite_key"] = create_composite_key(db_df)
 
-    # 원본 데이터에서 중복 제거 (첫 번째 행만 유지)
-    raw_df_unique = raw_df.drop_duplicates(subset="composite_key", keep="first")
+    # 중복키 일치 확인
+    db_keys = set(db_df["composite_key"])
+    raw_keys = set(raw_df["composite_key"])
+    missing_in_db = raw_keys - db_keys
+    extra_in_db = db_keys - raw_keys
 
-    # DB에 없는 원본 데이터 레코드 확인
-    missing_in_db = raw_df_unique[~raw_df_unique["composite_key"].isin(db_df["composite_key"])]
-    print(f"DB에 없는 원본 데이터 레코드 수: {len(missing_in_db)}")
+    print(f"DB에 없는 원본 데이터 키 수: {len(missing_in_db)}")
+    print(f"원본 데이터에 없는 DB 키 수: {len(extra_in_db)}")
 
-    # 원본 데이터에 없는 DB 레코드 확인
-    extra_in_db = db_df[~db_df["composite_key"].isin(raw_df_unique["composite_key"])]
-    print(f"원본 데이터에 없는 DB 레코드 수: {len(extra_in_db)}")
+    # Replen_Balance_Order 타입 비교
+    print(f"\nReplen_Balance_Order 데이터 타입:")
+    print(f"원본 데이터: {raw_df['Replen_Balance_Order'].dtype}")
+    print(f"DB 데이터: {db_df['Replen_Balance_Order'].dtype}")
 
-    # CountPO 값 검증
-    if "CountPO" in db_df.columns and "CountPO" in raw_df_unique.columns:
-        db_df_with_raw = db_df.merge(raw_df_unique[["composite_key", "CountPO"]], on="composite_key", suffixes=("", "_raw"))
-        incorrect_count = db_df_with_raw[db_df_with_raw["CountPO"] != db_df_with_raw["CountPO_raw"]]
-        print(f"CountPO 값이 잘못된 레코드 수: {len(incorrect_count)}")
+    # Replen_Balance_Order 값 비교
+    raw_replen = set(raw_df["Replen_Balance_Order"])
+    db_replen = set(db_df["Replen_Balance_Order"])
+
+    replen_mismatch = raw_replen.symmetric_difference(db_replen)
+    print(f"\nReplen_Balance_Order 불일치 값 수: {len(replen_mismatch)}")
+
+    if replen_mismatch:
+        print("Replen_Balance_Order 불일치 값 샘플 (최대 5개):")
+        print(list(replen_mismatch)[:5])
+
+    # CountPO 정확성 검증
+    merged_df = pd.merge(
+        raw_df.groupby("composite_key").agg({"Count_PO": "first"}),
+        db_df[["composite_key", "Count_PO"]],
+        on="composite_key",
+        suffixes=("_raw", "_db"),
+    )
+    count_mismatch = merged_df[merged_df["Count_PO_raw"] != merged_df["Count_PO_db"]]
+    print(f"CountPO 불일치 레코드 수: {len(count_mismatch)}")
+
+    # 필드값 비교 (예: Quantity)
+    raw_quantity = raw_df.groupby("composite_key")["Quantity"].sum().reset_index()
+    db_quantity = db_df[["composite_key", "Quantity"]]
+    quantity_comparison = pd.merge(
+        raw_quantity, db_quantity, on="composite_key", suffixes=("_raw", "_db")
+    )
+    quantity_mismatch = quantity_comparison[
+        quantity_comparison["Quantity_raw"] != quantity_comparison["Quantity_db"]
+    ]
+    print(f"Quantity 합계 불일치 레코드 수: {len(quantity_mismatch)}")
 
     # 샘플 데이터 출력
     if len(missing_in_db) > 0:
-        print("\nDB에 없는 원본 데이터 샘플 (최대 5개):")
-        print(missing_in_db[["ReceiptNo", "Replen_Balance_Order", "Cust_Sys_No"]].head())
+        print("\nDB에 없는 원본 데이터 키 샘플 (최대 5개):")
+        print(list(missing_in_db)[:5])
 
     if len(extra_in_db) > 0:
-        print("\n원본 데이터에 없는 DB 레코드 샘플 (최대 5개):")
-        print(extra_in_db[["ReceiptNo", "Replen_Balance_Order", "Cust_Sys_No"]].head())
+        print("\n원본 데이터에 없는 DB 키 샘플 (최대 5개):")
+        print(list(extra_in_db)[:5])
 
-    if "CountPO" in db_df.columns and "CountPO" in raw_df_unique.columns and len(incorrect_count) > 0:
-        print("\nCountPO 값이 잘못된 레코드 샘플 (최대 5개):")
-        print(incorrect_count[["ReceiptNo", "Replen_Balance_Order", "Cust_Sys_No", "CountPO", "CountPO_raw"]].head())
+    if len(count_mismatch) > 0:
+        print("\nCountPO 불일치 샘플 (최대 5개):")
+        print(count_mismatch.head())
 
-    # 열별 분석
-    analyze_column_differences(raw_df_unique, db_df, 'Replen_Balance_Order')
-    analyze_column_differences(raw_df_unique, db_df, 'PutAwayDate')
+    if len(quantity_mismatch) > 0:
+        print("\nQuantity 합계 불일치 샘플 (최대 5개):")
+        print(quantity_mismatch.head())
 
-def analyze_column_differences(raw_df, db_df, column_name):
-    print(f"\n'{column_name}' 열 분석:")
-    
-    # 데이터 타입 확인
-    print(f"원본 데이터 타입: {raw_df[column_name].dtype}")
-    print(f"DB 데이터 타입: {db_df[column_name].dtype}")
-    
-    # NULL 값 확인
-    print(f"원본 데이터 NULL 값 수: {raw_df[column_name].isnull().sum()}")
-    print(f"DB 데이터 NULL 값 수: {db_df[column_name].isnull().sum()}")
-    
-    # 유일한 값 비교
-    raw_unique_values = set(raw_df[column_name].dropna().unique())
-    db_unique_values = set(db_df[column_name].dropna().unique())
-    
-    lost_values = raw_unique_values - db_unique_values
-    new_values = db_unique_values - raw_unique_values
-    
-    print(f"원본에만 있는 유일한 값의 수: {len(lost_values)}")
-    print(f"DB에만 있는 유일한 값의 수: {len(new_values)}")
-
-    # 샘플 데이터 출력
-    if len(lost_values) > 0:
-        print(f"\n원본에만 있는 값의 샘플 (최대 5개): {list(lost_values)[:5]}")
-    if len(new_values) > 0:
-        print(f"\nDB에만 있는 값의 샘플 (최대 5개): {list(new_values)[:5]}")
 
 def main():
     raw_df = get_raw_data()
     db_df = get_db_data()
     compare_data(raw_df, db_df)
+
 
 if __name__ == "__main__":
     main()

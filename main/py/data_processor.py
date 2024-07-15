@@ -1,7 +1,10 @@
+from queue import Full
 import pandas as pd
 import datetime
 from dateutil.relativedelta import relativedelta, SA
 import logging
+import numpy as np
+
 from typing import Tuple, Dict, Any
 
 logging.basicConfig(
@@ -14,40 +17,6 @@ class DataProcessor:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
 
-    def get_fy_start(self, date: datetime.date) -> datetime.date:
-        if date.month < 2 or (date.month == 2 and date.day < 7):
-            year = date.year - 1
-        else:
-            year = date.year
-
-        feb_1 = datetime.date(year, 2, 1)
-        return feb_1 + relativedelta(weekday=SA)
-
-    def get_dell_week_and_fy(self, date: datetime.date) -> Tuple[str, str]:
-        if pd.isna(date):
-            return "Unknown", "Unknown"
-
-        fy_start = self.get_fy_start(date)
-        if date < fy_start:
-            fy_start = self.get_fy_start(date.replace(year=date.year - 1))
-            fy = fy_start.year
-        else:
-            fy = fy_start.year + 1
-
-        days_since_fy_start = (date - fy_start).days
-        dell_week = (days_since_fy_start // 7) + 1
-
-        return f"WK{dell_week:02d}", f"FY{fy % 100:02d}"
-
-    def get_quarter(self, date: datetime.date) -> str:
-        if pd.isna(date):
-            return "Unknown"
-
-        fy_start = self.get_fy_start(date)
-        days_since_fy_start = (date - fy_start).days
-        quarter = (days_since_fy_start // 91) + 1
-        return f"Q{min(quarter, 4)}"
-
     def process_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         try:
             logger.info("Original column names: %s", df.columns.tolist())
@@ -55,13 +24,13 @@ class DataProcessor:
 
             df = self._rename_columns(df)
             df = self._convert_data_types(df)
-            df = self._clean_replen_balance_order(df)  # 새로운 정제 단계 추가
-            df = self._handle_ship_from_code(df)
+            df = self._clean_replen_balance_order(df)
+            df = self._handle_ship_from_code(df)  # 새로 추가된 메서드 호출
             df = self._calculate_fiscal_data(df)
             df = self._map_order_type(df)
             df = self._handle_missing_values(df)
             df = self._calculate_count_po(df)
-            df = df[df['Country'] == 'KR']
+            df = df[df["Country"] == "KR"]
 
             logger.info("Data processing completed successfully")
             return df
@@ -78,14 +47,71 @@ class DataProcessor:
             df["Quantity"] = (
                 pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype("Int64")
             )
+
+        date_columns = ["PutAwayDate", "ActualPhysicalReceiptDate"]
+        for col in date_columns:
+            if col in df.columns:
+                df[col] = pd.to_datetime(df[col], errors="coerce")
+
+        if "PutAwayDate" in df.columns and "ActualPhysicalReceiptDate" in df.columns:
+            # PutAwayDate가 NaT(Null)인 경우 ActualPhysicalReceiptDate 값을 사용
+            df.loc[df["PutAwayDate"].isnull(), "PutAwayDate"] = df.loc[
+                df["PutAwayDate"].isnull(), "ActualPhysicalReceiptDate"
+            ]
+
+            # PutAwayDate에 시간 정보가 없는 경우 ActualPhysicalReceiptDate의 시간 정보를 사용
+            mask = df["PutAwayDate"].dt.time == pd.Timestamp("00:00:00").time()
+            df.loc[mask, "PutAwayDate"] = df.loc[mask, "PutAwayDate"].dt.date.astype(
+                "datetime64[ns]"
+            ) + pd.to_timedelta(
+                df.loc[mask, "ActualPhysicalReceiptDate"].dt.time.astype(str)
+            )
+
         if "PutAwayDate" in df.columns:
-            df["PutAwayDate"] = pd.to_datetime(df["PutAwayDate"], errors="coerce")
-            df["InventoryDate"] = df["PutAwayDate"].dt.date.astype("object")
+            df["InventoryDate"] = df["PutAwayDate"].dt.date
+
         return df
 
-    def _handle_ship_from_code(self, df: pd.DataFrame) -> pd.DataFrame:
-        df.loc[df["ShipFromCode"].str.upper() == "REMARK", "ShipFromCode"] = None
+    def _clean_replen_balance_order(self, df: pd.DataFrame) -> pd.DataFrame:
+        if "Replen_Balance_Order" in df.columns:
+            df["Replen_Balance_Order"] = df["Replen_Balance_Order"].astype(str)
+            df["Replen_Balance_Order"] = df["Replen_Balance_Order"].apply(
+                lambda x: x.split(".")[0] if "." in x else x
+            )
+            numeric_mask = df["Replen_Balance_Order"].str.isnumeric()
+            df.loc[numeric_mask, "Replen_Balance_Order"] = pd.to_numeric(
+                df.loc[numeric_mask, "Replen_Balance_Order"], errors="coerce"
+            ).astype("Int64")
         return df
+
+    def get_fy_start(self, date: datetime.date) -> datetime.date:
+        if date.month < 2 or (date.month == 2 and date.day < 7):
+            year = date.year - 1
+        else:
+            year = date.year
+        feb_1 = datetime.date(year, 2, 1)
+        return feb_1 + relativedelta(weekday=SA)
+
+    def get_dell_week_and_fy(self, date: datetime.date) -> Tuple[str, str]:
+        if pd.isna(date):
+            return "Unknown", "Unknown"
+        fy_start = self.get_fy_start(date)
+        if date < fy_start:
+            fy_start = self.get_fy_start(date.replace(year=date.year - 1))
+            fy = fy_start.year
+        else:
+            fy = fy_start.year + 1
+        days_since_fy_start = (date - fy_start).days
+        dell_week = (days_since_fy_start // 7) + 1
+        return f"WK{dell_week:02d}", f"FY{fy % 100:02d}"
+
+    def get_quarter(self, date: datetime.date) -> str:
+        if pd.isna(date):
+            return "Unknown"
+        fy_start = self.get_fy_start(date)
+        days_since_fy_start = (date - fy_start).days
+        quarter = (days_since_fy_start // 91) + 1
+        return f"Q{min(quarter, 4)}"
 
     def _calculate_fiscal_data(self, df: pd.DataFrame) -> pd.DataFrame:
         if "PutAwayDate" in df.columns:
@@ -96,8 +122,8 @@ class DataProcessor:
                     else ("Unknown", "Unknown")
                 )
             )
-            df["Week"] = fiscal_data.apply(lambda x: x[0])  # WK** 형식
-            df["FY"] = fiscal_data.apply(lambda x: x[1])  # FY** 형식
+            df["Week"] = fiscal_data.apply(lambda x: x[0])
+            df["FY"] = fiscal_data.apply(lambda x: x[1])
             df["Quarter"] = df["PutAwayDate"].dt.date.apply(
                 lambda x: self.get_quarter(x) if pd.notna(x) else "Unknown"
             )
@@ -121,22 +147,9 @@ class DataProcessor:
         df["Count_PO"] = df.groupby("Cust_Sys_No")["Cust_Sys_No"].transform("count")
         return df
 
-    def _clean_replen_balance_order(self, df: pd.DataFrame) -> pd.DataFrame:
-        if "Replen_Balance_Order" in df.columns:
-            # 문자열로 변환
-            df["Replen_Balance_Order"] = df["Replen_Balance_Order"].astype(str)
-
-            # 소수점 제거 (소수점이 있는 경우에만)
-            df["Replen_Balance_Order"] = df["Replen_Balance_Order"].apply(
-                lambda x: x.split(".")[0] if "." in x else x
-            )
-
-            # 숫자가 아닌 값은 그대로 유지 (예: P01-95438788837)
-            numeric_mask = df["Replen_Balance_Order"].str.isnumeric()
-            df.loc[numeric_mask, "Replen_Balance_Order"] = pd.to_numeric(
-                df.loc[numeric_mask, "Replen_Balance_Order"], errors="coerce"
-            ).astype("Int64")
-
+    def _handle_ship_from_code(self, df: pd.DataFrame) -> pd.DataFrame:
+        if "ShipFromCode" in df.columns:
+            df.loc[df["ShipFromCode"].str.upper() == "REMARK", "ShipFromCode"] = np.nan
         return df
 
 
@@ -149,28 +162,3 @@ def main_data_processing(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFra
     except Exception as e:
         logger.error("Error in main_data_processing: %s", str(e))
         raise
-
-
-def _clean_replen_balance_order(self, df: pd.DataFrame) -> pd.DataFrame:
-    if "Replen_Balance_Order" in df.columns:
-        # 문자열로 변환 후 소수점 이하 제거
-        df["Replen_Balance_Order"] = (
-            df["Replen_Balance_Order"].astype(str).str.split(".").str[0]
-        )
-
-        # 숫자가 아닌 값 처리 (예: P01-95438788837)
-        df.loc[~df["Replen_Balance_Order"].str.isnumeric(), "Replen_Balance_Order"] = (
-            df["Replen_Balance_Order"]
-        )
-
-        # 숫자인 경우 정수로 변환
-        df.loc[df["Replen_Balance_Order"].str.isnumeric(), "Replen_Balance_Order"] = (
-            pd.to_numeric(
-                df.loc[
-                    df["Replen_Balance_Order"].str.isnumeric(), "Replen_Balance_Order"
-                ],
-                errors="coerce",
-            ).astype("Int64")
-        )
-
-    return df

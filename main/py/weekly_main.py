@@ -18,6 +18,8 @@ from file_handler import (
 from database import create_tables, upload_to_mysql
 from data_processor import main_data_processing
 
+# weekly defective File data conversion main
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -86,7 +88,7 @@ def main():
 
         existing_files = get_existing_files(DOWNLOAD_FOLDER)
 
-        new_name = f"{start_date[:2]}{start_date[5:7]}{start_date[8:]}_{end_date[:2]}{end_date[5:7]}{end_date[8:]}_ReceivingTAT_report.xlsx"
+        new_name = f"{start_date[2:4]}{start_date[5:7]}{start_date[8:]}_{end_date[:2]}{end_date[5:7]}{end_date[8:]}_ReceivingTAT_report.xlsx"
 
         logger.info("Report를 찾고 다운로드를 시작합니다.")
         crawler.process_rma_return(start_date, end_date)

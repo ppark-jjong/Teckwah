@@ -11,6 +11,17 @@ from file_handler import process_file
 from database import create_tables, upload_to_mysql
 from data_processor import main_data_processing
 
+# Data Raw 파일 => db 변환 main 파일 아래 6개 파이썬 파일 import 연동 중 
+# config.py: 설정 정보를 저장
+# database.py: 데이터베이스 관련 기능
+# web_crawler.py: 웹 크롤링 관련 기능
+# data_processor.py: 데이터 처리 관련 기능
+# file_handler.py: 파일 처리 관련 기능
+# main.py: 메인 실행 스크립트
+# login_crawling.py : 크롤링을 위한 처리 관련 기능
+# test.py : 원본데이터와 DB데이터 비교 테스트 기능
+
+
 
 def read_xlsb(filepath, sheet_name):
     with open_workbook(filepath) as wb:

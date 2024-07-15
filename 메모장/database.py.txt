@@ -1,7 +1,8 @@
 import mysql.connector
 from mysql.connector import pooling
-from mysql.connector import Error
 import pandas as pd
+from typing import List, Dict, Any
+import logging
 from config import (
     DB_CONFIG,
     POOL_NAME,
@@ -11,26 +12,29 @@ from config import (
     ORDER_TYPE_MAPPING,
 )
 
+logger = logging.getLogger(__name__)
 
 class MySQLConnectionPool:
     def __init__(self):
         try:
             self.pool = mysql.connector.pooling.MySQLConnectionPool(
-                pool_name=POOL_NAME, pool_size=POOL_SIZE, **DB_CONFIG
+                pool_name=POOL_NAME,
+                pool_size=POOL_SIZE,
+                **DB_CONFIG
             )
-            print("Connection pool created successfully")
+            logger.info("Connection pool created successfully")
         except mysql.connector.Error as err:
-            print(f"Error creating connection pool: {err}")
+            logger.error(f"Error creating connection pool: {err}")
             raise
 
     def __enter__(self):
         try:
             self.connection = self.pool.get_connection()
             self.cursor = self.connection.cursor(buffered=True)
-            print("Connection acquired from pool")
+            logger.info("Connection acquired from pool")
             return self
         except mysql.connector.Error as err:
-            print(f"Error acquiring connection from pool: {err}")
+            logger.error(f"Error acquiring connection from pool: {err}")
             raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -38,131 +42,28 @@ class MySQLConnectionPool:
             self.cursor.close()
         if self.connection:
             self.connection.close()
-        print("Connection returned to pool")
+        logger.info("Connection returned to pool")
 
-    def execute_query(self, query, params=None):
+    def execute_query(self, query: str, params: tuple = None):
         try:
             if params:
                 self.cursor.execute(query, params)
             else:
                 self.cursor.execute(query)
             self.connection.commit()
-            self.cursor.reset()  # 커서 재설정
         except mysql.connector.Error as err:
-            print(f"쿼리 실행 실패: {err}")
+            logger.error(f"Error executing query: {err}")
             self.connection.rollback()
+            raise
 
-    def executemany(self, query, params):
+    def executemany(self, query: str, params: List[tuple]):
         try:
             self.cursor.executemany(query, params)
             self.connection.commit()
-            self.cursor.reset()  # 커서 재설정
         except mysql.connector.Error as err:
-            print(f"대량 쿼리 실행 실패: {err}")
+            logger.error(f"Error executing batch query: {err}")
             self.connection.rollback()
-
-
-def upload_to_mysql(df):
-    with MySQLConnectionPool() as conn:
-        # Insert OrderType data
-        for edi_type, detailed_type in ORDER_TYPE_MAPPING.items():
-            conn.execute_query(
-                f"""
-                INSERT INTO {ORDER_TYPE_TABLE} (EDI_Order_Type, Detailed_Order_Type)
-                VALUES (%s, %s)
-                ON DUPLICATE KEY UPDATE Detailed_Order_Type=VALUES(Detailed_Order_Type)
-                """,
-                (edi_type, detailed_type),
-            )
-
-        # Receiving_TAT_Report 데이터 삽입
-        insert_columns = [
-            "ReceiptNo",
-            "Replen_Balance_Order",
-            "Cust_Sys_No",
-            "Allocated_Part",
-            "EDI_Order_Type",
-            "ShipFromCode",
-            "ShipToCode",
-            "Country",
-            "Quantity",
-            "PutAwayDate",
-            "InventoryDate",
-            "FY",
-            "Quarter",
-            "Month",
-            "Week",
-            "OrderType",
-            "Count_PO",
-        ]
-
-        # 실제 존재하는 열만 선택
-        existing_columns = [col for col in insert_columns if col in df.columns]
-
-        insert_placeholders = ", ".join(["%s"] * len(existing_columns))
-        update_placeholders = ", ".join(
-            [
-                f"{col}=VALUES({col})"
-                for col in existing_columns
-                if col not in ["ReceiptNo", "Replen_Balance_Order", "Cust_Sys_No"]
-            ]
-        )
-
-        insert_query = f"""
-            INSERT INTO {RECEIVING_TAT_REPORT_TABLE} ({", ".join(existing_columns)}) 
-            VALUES ({insert_placeholders})
-            ON DUPLICATE KEY UPDATE {update_placeholders}
-        """
-
-        # 존재하는 열만 선택하고, 없는 열은 None으로 채움
-        df_to_insert = df.reindex(columns=existing_columns, fill_value=None)
-
-        # 'Month' 열의 길이를 2자로 제한
-        if "Month" in df_to_insert.columns:
-            df_to_insert["Month"] = df_to_insert["Month"].astype(str).str.zfill(2)
-
-        # datetime 객체를 문자열로 변환
-        if "PutAwayDate" in df_to_insert.columns:
-            df_to_insert["PutAwayDate"] = df_to_insert["PutAwayDate"].dt.strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
-
-        # InventoryDate 처리
-        if "InventoryDate" in df_to_insert.columns:
-            df_to_insert["InventoryDate"] = pd.to_datetime(
-                df_to_insert["InventoryDate"], errors="coerce"
-            )
-            df_to_insert["InventoryDate"] = df_to_insert["InventoryDate"].dt.strftime(
-                "%Y-%m-%d"
-            )
-
-        if "Replen_Balance_Order" in df_to_insert.columns:
-            df_to_insert["Replen_Balance_Order"] = df_to_insert[
-                "Replen_Balance_Order"
-            ].astype(str)
-
-        # None 값과 NaT 값을 MySQL의 NULL로 변환
-        df_to_insert = df_to_insert.where(pd.notnull(df_to_insert), None)
-        df_to_insert = df_to_insert.replace({pd.NaT: None})
-        data_to_insert = df_to_insert.values.tolist()
-
-        conn.executemany(insert_query, data_to_insert)
-
-    print(f"데이터베이스에 {len(data_to_insert)}개의 행이 업로드되었습니다.")
-
-
-def get_db_data():
-    try:
-        with MySQLConnectionPool() as conn:
-            query = f"SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}"
-            conn.execute_query(query)
-            result = conn.cursor.fetchall()
-            columns = [i[0] for i in conn.cursor.description]
-            return pd.DataFrame(result, columns=columns)
-    except Exception as e:
-        print(f"데이터베이스에서 데이터를 가져오는 중 오류 발생: {str(e)}")
-        return pd.DataFrame()
-
+            raise
 
 def create_tables():
     order_type_table = f"""
@@ -191,22 +92,93 @@ def create_tables():
         OrderType VARCHAR(255),
         Count_PO INT,
         PRIMARY KEY (ReceiptNo, Replen_Balance_Order, Cust_Sys_No),
-        FOREIGN KEY (EDI_Order_Type) REFERENCES OrderType(EDI_Order_Type)
+        FOREIGN KEY (EDI_Order_Type) REFERENCES {ORDER_TYPE_TABLE}(EDI_Order_Type)
     )
     """
     with MySQLConnectionPool() as conn:
         conn.execute_query(order_type_table)
         conn.execute_query(receiving_tat_table)
-    print("테이블 생성 완료")
+    logger.info("Tables created successfully")
 
+def upload_to_mysql(df: pd.DataFrame):
+    # Filter for KR data only
+    df = df[df['Country'] == 'KR']
+    
+    with MySQLConnectionPool() as conn:
+        # Insert OrderType data
+        for edi_type, detailed_type in ORDER_TYPE_MAPPING.items():
+            query = f"""
+            INSERT INTO {ORDER_TYPE_TABLE} (EDI_Order_Type, Detailed_Order_Type)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE Detailed_Order_Type=VALUES(Detailed_Order_Type)
+            """
+            conn.execute_query(query, (edi_type, detailed_type))
 
-def get_data_by_date(start_date, end_date):
+        # Insert Receiving_TAT_Report data
+        insert_columns = [
+            "ReceiptNo", "Replen_Balance_Order", "Cust_Sys_No", "Allocated_Part",
+            "EDI_Order_Type", "ShipFromCode", "ShipToCode", "Country", "Quantity",
+            "PutAwayDate", "InventoryDate", "FY", "Quarter", "Month", "Week",
+            "OrderType", "Count_PO"
+        ]
+
+        # Select only existing columns
+        existing_columns = [col for col in insert_columns if col in df.columns]
+
+        insert_placeholders = ", ".join(["%s"] * len(existing_columns))
+        update_placeholders = ", ".join([
+            f"{col}=VALUES({col})"
+            for col in existing_columns
+            if col not in ["ReceiptNo", "Replen_Balance_Order", "Cust_Sys_No"]
+        ])
+
+        insert_query = f"""
+        INSERT INTO {RECEIVING_TAT_REPORT_TABLE} ({", ".join(existing_columns)}) 
+        VALUES ({insert_placeholders})
+        ON DUPLICATE KEY UPDATE {update_placeholders}
+        """
+
+        # Prepare data for insertion
+        df_to_insert = df.reindex(columns=existing_columns, fill_value=None)
+        
+        # Convert datetime columns to string
+        datetime_cols = ['PutAwayDate', 'InventoryDate']
+        for col in datetime_cols:
+            if col in df_to_insert.columns:
+                df_to_insert[col] = pd.to_datetime(df_to_insert[col]).dt.strftime('%Y-%m-%d %H:%M:%S')
+
+        # Convert Replen_Balance_Order to string
+        if 'Replen_Balance_Order' in df_to_insert.columns:
+            df_to_insert['Replen_Balance_Order'] = df_to_insert['Replen_Balance_Order'].astype(str)
+
+        # Replace NaN and NaT with None
+        df_to_insert = df_to_insert.where(pd.notna(df_to_insert), None)
+        
+        data_to_insert = df_to_insert.values.tolist()
+
+        conn.executemany(insert_query, data_to_insert)
+
+    logger.info(f"{len(data_to_insert)} rows uploaded to database")
+
+def get_db_data() -> pd.DataFrame:
+    try:
+        with MySQLConnectionPool() as conn:
+            query = f"SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}"
+            conn.execute_query(query)
+            result = conn.cursor.fetchall()
+            columns = [i[0] for i in conn.cursor.description]
+            return pd.DataFrame(result, columns=columns)
+    except Exception as e:
+        logger.error(f"Error fetching data from database: {str(e)}")
+        return pd.DataFrame()
+
+def get_data_by_date(start_date: str, end_date: str) -> pd.DataFrame:
     with MySQLConnectionPool() as conn:
         query = f"""
         SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}
         WHERE PutAwayDate BETWEEN %s AND %s
         """
         conn.execute_query(query, (start_date, end_date))
-        return pd.DataFrame(
-            conn.cursor.fetchall(), columns=[i[0] for i in conn.cursor.description]
-        )
+        result = conn.cursor.fetchall()
+        columns = [i[0] for i in conn.cursor.description]
+        return pd.DataFrame(result, columns=columns)
