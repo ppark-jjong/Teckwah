@@ -16,14 +16,18 @@ from config import WEBDRIVER_TIMEOUT, MAX_RETRIES, RETRY_DELAY
 
 logger = logging.getLogger(__name__)
 
-
 class WebCrawler:
     def __init__(self, config: Dict[str, Any]):
+        """
+        WebCrawler 클래스를 초기화합니다.
+        """
         self.config = config
         self.driver = self._initialize_driver()
 
     def _initialize_driver(self) -> webdriver.Chrome:
-        """웹 드라이버를 초기화합니다."""
+        """
+        웹 드라이버를 초기화합니다.
+        """
         chrome_options = webdriver.ChromeOptions()
         prefs = {
             "download.default_directory": self.config["DOWNLOAD_FOLDER"],
@@ -45,7 +49,9 @@ class WebCrawler:
             raise
 
     def _perform_login(self, username: str, password: str) -> None:
-        """실제 로그인 작업을 수행합니다."""
+        """
+        실제 로그인 작업을 수행합니다.
+        """
         self.driver.get("https://cs.vinfiniti.biz:8227/")
         WebDriverWait(self.driver, WEBDRIVER_TIMEOUT).until(
             EC.presence_of_element_located((By.ID, "userName"))
@@ -61,11 +67,15 @@ class WebCrawler:
         ).click()
 
     def search_report(self) -> None:
-        """리포트를 검색합니다."""
+        """
+        리포트를 검색합니다.
+        """
         self._retry_action(self._perform_search_report)
 
     def _perform_search_report(self) -> None:
-        """실제 리포트 검색 작업을 수행합니다."""
+        """
+        실제 리포트 검색 작업을 수행합니다.
+        """
         WebDriverWait(self.driver, WEBDRIVER_TIMEOUT).until(
             EC.presence_of_element_located((By.ID, "ext-comp-1003"))
         )
@@ -78,7 +88,9 @@ class WebCrawler:
         element.send_keys(Keys.RETURN)
 
     def process_rma_return(self, start_date: str, end_date: str) -> None:
-        """RMA 반환 프로세스를 수행합니다."""
+        """
+        RMA 반환 프로세스를 수행합니다.
+        """
         try:
             self._perform_rma_return(start_date, end_date)
         except (TimeoutException, NoSuchElementException, WebDriverException) as e:
@@ -86,7 +98,9 @@ class WebCrawler:
             raise
 
     def _perform_rma_return(self, start_date: str, end_date: str) -> None:
-        """실제 RMA 반환 프로세스를 수행합니다."""
+        """
+        실제 RMA 반환 프로세스를 수행합니다.
+        """
         try:
             WebDriverWait(self.driver, WEBDRIVER_TIMEOUT).until(
                 EC.presence_of_element_located(
@@ -137,9 +151,6 @@ class WebCrawler:
     def _retry_action(self, action, *args):
         """
         지정된 횟수만큼 작업을 재시도합니다.
-
-        :param action: 수행할 작업 (함수)
-        :param args: 작업에 전달할 인자들
         """
         for attempt in range(MAX_RETRIES):
             try:
@@ -152,7 +163,9 @@ class WebCrawler:
                 time.sleep(RETRY_DELAY)
 
     def close(self) -> None:
-        """웹 드라이버를 종료합니다."""
+        """
+        웹 드라이버를 종료합니다.
+        """
         self.driver.quit()
 
 
@@ -161,11 +174,6 @@ def initialize_and_login(
 ) -> WebCrawler:
     """
     WebCrawler를 초기화하고 로그인합니다.
-
-    :param config: 설정 정보
-    :param username: 사용자 이름
-    :param password: 비밀번호
-    :return: 초기화된 WebCrawler 인스턴스
     """
     crawler = WebCrawler(config)
     try:

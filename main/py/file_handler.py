@@ -8,27 +8,17 @@ from config import DOWNLOAD_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
-
 def get_existing_files(folder: str) -> Set[str]:
     """
     지정된 폴더의 기존 파일 목록을 가져옵니다.
-
-    :param folder: 폴더 경로
-    :return: 파일 이름 집합
     """
     return set(os.listdir(folder))
-
 
 def wait_for_download(
     download_folder: str, existing_files: Set[str], timeout: int = DOWNLOAD_TIMEOUT
 ) -> Set[str]:
     """
     새 파일이 다운로드될 때까지 대기합니다.
-
-    :param download_folder: 다운로드 폴더 경로
-    :param existing_files: 기존 파일 목록
-    :param timeout: 타임아웃 시간(초)
-    :return: 새로 다운로드된 파일 집합
     """
     start_time = time.time()
     while True:
@@ -42,17 +32,11 @@ def wait_for_download(
         time.sleep(1)
     return set()
 
-
 def rename_downloaded_file(
     download_folder: str, new_files: Set[str], new_name: str
 ) -> Optional[str]:
     """
     다운로드된 파일의 이름을 변경합니다.
-
-    :param download_folder: 다운로드 폴더 경로
-    :param new_files: 새로 다운로드된 파일 집합
-    :param new_name: 새 파일 이름
-    :return: 변경된 파일의 경로 또는 None
     """
     if new_files:
         latest_file = max(
@@ -71,15 +55,9 @@ def rename_downloaded_file(
         logger.warning("다운로드된 파일을 찾을 수 없습니다.")
         return None
 
-
 def process_file(file_path: str, complete_folder: str, process_func) -> Optional[str]:
     """
     파일을 처리하고 완료 폴더로 이동합니다.
-
-    :param file_path: 처리할 파일 경로
-    :param complete_folder: 완료 폴더 경로
-    :param process_func: 데이터 처리 함수
-    :return: 이동된 파일의 새 경로 또는 None
     """
     try:
         logger.info(f"파일 처리 시작: {file_path}")
@@ -100,13 +78,9 @@ def process_file(file_path: str, complete_folder: str, process_func) -> Optional
         logger.error(f"파일 처리 실패: {str(e)}")
         raise
 
-
 def save_to_excel(df: pd.DataFrame, file_path: str) -> None:
     """
     데이터프레임을 엑셀 파일로 저장합니다.
-
-    :param df: 저장할 데이터프레임
-    :param file_path: 저장할 엑셀 파일 경로
     """
     try:
         df.to_excel(file_path, index=False)

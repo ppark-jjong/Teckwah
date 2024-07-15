@@ -21,9 +21,10 @@ from data_processor import main_data_processing
 # login_crawling.py : 크롤링을 위한 처리 관련 기능
 # test.py : 원본데이터와 DB데이터 비교 테스트 기능
 
-
-
 def read_xlsb(filepath, sheet_name):
+    """
+    xlsb 파일을 읽어 데이터프레임으로 변환합니다.
+    """
     with open_workbook(filepath) as wb:
         with wb.get_sheet(sheet_name) as sheet:
             data = [row for row in sheet.rows()]
@@ -32,8 +33,10 @@ def read_xlsb(filepath, sheet_name):
     data = [[cell.v for cell in row] for row in data[1:]]
     return pd.DataFrame(data, columns=headers)
 
-
 def main():
+    """
+    메인 함수: 데이터 로드, 처리 및 데이터베이스 업로드를 수행합니다.
+    """
     try:
         create_tables()
 
@@ -66,7 +69,6 @@ def main():
 
     except Exception as e:
         print(f"오류 발생: {str(e)}")
-
 
 if __name__ == "__main__":
     main()

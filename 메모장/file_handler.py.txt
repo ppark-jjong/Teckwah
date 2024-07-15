@@ -99,3 +99,18 @@ def process_file(file_path: str, complete_folder: str, process_func) -> Optional
     except Exception as e:
         logger.error(f"파일 처리 실패: {str(e)}")
         raise
+
+
+def save_to_excel(df: pd.DataFrame, file_path: str) -> None:
+    """
+    데이터프레임을 엑셀 파일로 저장합니다.
+
+    :param df: 저장할 데이터프레임
+    :param file_path: 저장할 엑셀 파일 경로
+    """
+    try:
+        df.to_excel(file_path, index=False)
+        logger.info(f"데이터가 {file_path}에 성공적으로 저장되었습니다.")
+    except Exception as e:
+        logger.error(f"엑셀 파일 저장 중 오류 발생: {str(e)}")
+        raise
