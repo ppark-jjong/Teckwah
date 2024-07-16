@@ -1,10 +1,8 @@
-from queue import Full
 import pandas as pd
 import datetime
 from dateutil.relativedelta import relativedelta, SA
 import logging
 import numpy as np
-
 from typing import Tuple, Dict, Any
 
 logging.basicConfig(
@@ -12,12 +10,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
 class DataProcessor:
     def __init__(self, config: Dict[str, Any]):
+        """
+        DataProcessor 클래스를 초기화합니다.
+        """
         self.config = config
 
     def process_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        데이터프레임을 처리합니다.
+        """
         try:
             logger.info("Original column names: %s", df.columns.tolist())
             logger.info("First few rows of original data:\n%s", df.head().to_string())
@@ -40,9 +43,15 @@ class DataProcessor:
             raise
 
     def _rename_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        컬럼 이름을 변경합니다.
+        """
         return df.rename(columns=self.config["COLUMN_MAPPING"])
 
     def _convert_data_types(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        데이터 타입을 변환합니다.
+        """
         if "Quantity" in df.columns:
             df["Quantity"] = (
                 pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype("Int64")
@@ -73,6 +82,9 @@ class DataProcessor:
         return df
 
     def _clean_replen_balance_order(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Replen_Balance_Order 컬럼을 정리합니다.
+        """
         if "Replen_Balance_Order" in df.columns:
             df["Replen_Balance_Order"] = df["Replen_Balance_Order"].astype(str)
             df["Replen_Balance_Order"] = df["Replen_Balance_Order"].apply(
@@ -85,6 +97,9 @@ class DataProcessor:
         return df
 
     def get_fy_start(self, date: datetime.date) -> datetime.date:
+        """
+        회계 연도 시작일을 계산합니다.
+        """
         if date.month < 2 or (date.month == 2 and date.day < 7):
             year = date.year - 1
         else:
@@ -93,6 +108,9 @@ class DataProcessor:
         return feb_1 + relativedelta(weekday=SA)
 
     def get_dell_week_and_fy(self, date: datetime.date) -> Tuple[str, str]:
+        """
+        Dell 주와 회계 연도를 계산합니다.
+        """
         if pd.isna(date):
             return "Unknown", "Unknown"
         fy_start = self.get_fy_start(date)
@@ -106,6 +124,9 @@ class DataProcessor:
         return f"WK{dell_week:02d}", f"FY{fy % 100:02d}"
 
     def get_quarter(self, date: datetime.date) -> str:
+        """
+        분기를 계산합니다.
+        """
         if pd.isna(date):
             return "Unknown"
         fy_start = self.get_fy_start(date)
@@ -114,6 +135,9 @@ class DataProcessor:
         return f"Q{min(quarter, 4)}"
 
     def _calculate_fiscal_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        회계 데이터를 계산합니다.
+        """
         if "PutAwayDate" in df.columns:
             fiscal_data = df["PutAwayDate"].dt.date.apply(
                 lambda x: (
@@ -131,11 +155,17 @@ class DataProcessor:
         return df
 
     def _map_order_type(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        주문 타입을 매핑합니다.
+        """
         df["OrderType"] = df["EDI_Order_Type"].map(self.config["ORDER_TYPE_MAPPING"])
         df.loc[df["OrderType"].isna(), "OrderType"] = "Unknown"
         return df
 
     def _handle_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        결측값을 처리합니다.
+        """
         for col in df.columns:
             if df[col].dtype == "object":
                 df[col] = df[col].fillna("")
@@ -144,16 +174,25 @@ class DataProcessor:
         return df
 
     def _calculate_count_po(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Count_PO 컬럼을 계산합니다.
+        """
         df["Count_PO"] = df.groupby("Cust_Sys_No")["Cust_Sys_No"].transform("count")
         return df
 
     def _handle_ship_from_code(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        ShipFromCode 컬럼을 처리합니다.
+        """
         if "ShipFromCode" in df.columns:
             df.loc[df["ShipFromCode"].str.upper() == "REMARK", "ShipFromCode"] = np.nan
         return df
 
 
 def main_data_processing(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
+    """
+    DataProcessor 클래스를 이용해 데이터 프레임을 처리합니다.
+    """
     try:
         processor = DataProcessor(config)
         df = processor.process_dataframe(df)

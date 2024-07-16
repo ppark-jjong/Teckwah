@@ -13,7 +13,7 @@ def read_xlsb(filepath, sheet_name):
 
 
 def get_raw_data():
-    raw_data_file = "C:/MyMain/test/Dashboard_Raw Data.xlsb"
+    raw_data_file = "C:/MyMain/Teckwah/download/240706_240712_ReceivingTAT_report.xlsx"
     return read_xlsb(raw_data_file, "Receiving_TAT")
 
 

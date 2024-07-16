@@ -14,9 +14,11 @@ from config import (
 
 logger = logging.getLogger(__name__)
 
-
 class MySQLConnectionPool:
     def __init__(self):
+        """
+        MySQL 연결 풀을 생성합니다.
+        """
         try:
             self.pool = mysql.connector.pooling.MySQLConnectionPool(
                 pool_name=POOL_NAME, pool_size=POOL_SIZE, **DB_CONFIG
@@ -27,6 +29,9 @@ class MySQLConnectionPool:
             raise
 
     def __enter__(self):
+        """
+        풀에서 연결을 가져옵니다.
+        """
         try:
             self.connection = self.pool.get_connection()
             self.cursor = self.connection.cursor(buffered=True)
@@ -37,6 +42,9 @@ class MySQLConnectionPool:
             raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        연결을 반환합니다.
+        """
         if self.cursor:
             self.cursor.close()
         if self.connection:
@@ -44,6 +52,9 @@ class MySQLConnectionPool:
         logger.info("Connection returned to pool")
 
     def execute_query(self, query: str, params: tuple = None):
+        """
+        쿼리를 실행합니다.
+        """
         try:
             if params:
                 self.cursor.execute(query, params)
@@ -56,6 +67,9 @@ class MySQLConnectionPool:
             raise
 
     def executemany(self, query: str, params: List[tuple]):
+        """
+        여러 쿼리를 배치 실행합니다.
+        """
         try:
             self.cursor.executemany(query, params)
             self.connection.commit()
@@ -66,6 +80,9 @@ class MySQLConnectionPool:
 
 
 def create_tables():
+    """
+    필요한 데이터베이스 테이블을 생성합니다.
+    """
     order_type_table = f"""
     CREATE TABLE IF NOT EXISTS {ORDER_TYPE_TABLE} (
         EDI_Order_Type VARCHAR(255) PRIMARY KEY,
@@ -102,11 +119,12 @@ def create_tables():
 
 
 def upload_to_mysql(df: pd.DataFrame):
-    # Filter for KR data only
+    """
+    데이터프레임의 데이터를 데이터베이스에 업로드합니다.
+    """
     df = df[df["Country"] == "KR"]
 
     with MySQLConnectionPool() as conn:
-        # Insert OrderType data
         for edi_type, detailed_type in ORDER_TYPE_MAPPING.items():
             query = f"""
             INSERT INTO {ORDER_TYPE_TABLE} (EDI_Order_Type, Detailed_Order_Type)
@@ -115,7 +133,6 @@ def upload_to_mysql(df: pd.DataFrame):
             """
             conn.execute_query(query, (edi_type, detailed_type))
 
-        # Insert Receiving_TAT_Report data
         insert_columns = [
             "ReceiptNo",
             "Replen_Balance_Order",
@@ -136,7 +153,6 @@ def upload_to_mysql(df: pd.DataFrame):
             "Count_PO",
         ]
 
-        # Select only existing columns
         existing_columns = [col for col in insert_columns if col in df.columns]
 
         insert_placeholders = ", ".join(["%s"] * len(existing_columns))
@@ -154,10 +170,8 @@ def upload_to_mysql(df: pd.DataFrame):
         ON DUPLICATE KEY UPDATE {update_placeholders}
         """
 
-        # Prepare data for insertion
         df_to_insert = df.reindex(columns=existing_columns, fill_value=None)
 
-        # Convert datetime columns to string
         datetime_cols = ["PutAwayDate", "InventoryDate"]
         for col in datetime_cols:
             if col in df_to_insert.columns:
@@ -165,13 +179,11 @@ def upload_to_mysql(df: pd.DataFrame):
                     "%Y-%m-%d %H:%M:%S"
                 )
 
-        # Convert Replen_Balance_Order to string
         if "Replen_Balance_Order" in df_to_insert.columns:
             df_to_insert["Replen_Balance_Order"] = df_to_insert[
                 "Replen_Balance_Order"
             ].astype(str)
 
-        # Replace NaN and NaT with None
         df_to_insert = df_to_insert.where(pd.notna(df_to_insert), None)
 
         data_to_insert = df_to_insert.values.tolist()
@@ -182,6 +194,9 @@ def upload_to_mysql(df: pd.DataFrame):
 
 
 def get_db_data() -> pd.DataFrame:
+    """
+    데이터베이스에서 모든 데이터를 가져옵니다.
+    """
     try:
         with MySQLConnectionPool() as conn:
             query = f"SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}"
@@ -195,6 +210,9 @@ def get_db_data() -> pd.DataFrame:
 
 
 def get_data_by_date(start_date: str, end_date: str) -> pd.DataFrame:
+    """
+    지정된 기간 동안의 데이터를 가져옵니다.
+    """
     with MySQLConnectionPool() as conn:
         query = f"""
         SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}
@@ -209,10 +227,6 @@ def get_data_by_date(start_date: str, end_date: str) -> pd.DataFrame:
 def get_data_by_inventory_date(start_date: str, end_date: str) -> pd.DataFrame:
     """
     지정된 기간 동안의 데이터를 inventoryDate를 기준으로 추출합니다.
-
-    :param start_date: 시작 날짜 (YYYY-MM-DD)
-    :param end_date: 종료 날짜 (YYYY-MM-DD)
-    :return: 추출된 데이터프레임
     """
     query = f"""
     SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}
