@@ -1,0 +1,20 @@
+2024-07-16 23:39:10,068 - INFO - 데이터베이스에서 FY25 Q1 데이터를 추출합니다.
+2024-07-16 23:39:10,069 - ERROR - 예상치 못한 오류 발생: name 'create_engine' is not defined
+Traceback (most recent call last):
+  File "c:\MyMain\Teckwah\main\py\export.py", line 47, in main
+    df = get_data_by_fy_and_quarter(fy, quarter)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\database.py", line 252, in get_data_by_fy_and_quarter
+    engine = create_engine(connection_string)
+             ^^^^^^^^^^^^^
+NameError: name 'create_engine' is not defined
+2024-07-16 23:40:36,618 - INFO - 데이터베이스에서 FY25 Q1 데이터를 추출합니다.
+2024-07-16 23:40:36,618 - ERROR - 예상치 못한 오류 발생: name 'create_engine' is not defined
+Traceback (most recent call last):
+  File "c:\MyMain\Teckwah\main\py\export.py", line 47, in main
+    df = get_data_by_fy_and_quarter(fy, quarter)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\database.py", line 252, in get_data_by_fy_and_quarter
+    engine = create_engine(connection_string)
+             ^^^^^^^^^^^^^
+NameError: name 'create_engine' is not defined
