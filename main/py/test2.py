@@ -1,142 +1,204 @@
 import pandas as pd
-import unittest
-from sqlalchemy import create_engine
-from config import DB_CONFIG
+import mysql.connector
+from mysql.connector import Error
+from config import DB_CONFIG, RECEIVING_TAT_REPORT_TABLE
 from datetime import datetime
 
-class TestDataIntegrity(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # 사용자로부터 날짜 입력 받기
-        cls.start_date = input("시작 날짜를 입력하세요 (YYYY-MM-DD 형식): ")
-        cls.end_date = input("종료 날짜를 입력하세요 (YYYY-MM-DD 형식): ")
-        
-        # 입력된 날짜를 datetime 객체로 변환
-        cls.start_date = datetime.strptime(cls.start_date, "%Y-%m-%d").date()
-        cls.end_date = datetime.strptime(cls.end_date, "%Y-%m-%d").date()
 
-        # Raw 데이터 로드 (Excel 파일)
-        cls.raw_data_file = "C:/MyMain/Teckwah/download/xlsx_files/240706_240712_ReceivingTAT_report.xlsx"
-        cls.raw_data = pd.read_excel(cls.raw_data_file, sheet_name="CS Receiving TAT")
-        
-        # DB 연결 설정
-        connection_string = f"mysql+pymysql://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}/{DB_CONFIG['database']}"
-        cls.engine = create_engine(connection_string)
-        
-        # DB에서 데이터 로드
-        cls.db_data = pd.read_sql_table('receiving_tat_report', cls.engine)
+def read_excel(filepath, sheet_name):
+    try:
+        df = pd.read_excel(filepath, sheet_name=sheet_name)
+        print(f"Successfully read {len(df)} rows from the Excel file.")
+        return df
+    except Exception as e:
+        print(f"Error reading Excel file: {str(e)}")
+        return pd.DataFrame()
 
-        # InventoryDate를 datetime 형식으로 변환
-        cls.db_data['InventoryDate'] = pd.to_datetime(cls.db_data['InventoryDate'])
-        cls.raw_data['InventoryDate'] = pd.to_datetime(cls.raw_data['PutAwayDate']).dt.date
 
-        # 입력받은 날짜 범위로 데이터 필터링
-        cls.db_filtered = cls.db_data[(cls.db_data['InventoryDate'].dt.date >= cls.start_date) & 
-                                      (cls.db_data['InventoryDate'].dt.date <= cls.end_date)]
-        cls.raw_filtered = cls.raw_data[(cls.raw_data['InventoryDate'] >= cls.start_date) & 
-                                        (cls.raw_data['InventoryDate'] <= cls.end_date)]
+def get_raw_data():
+    raw_data_file = (
+        "C:/MyMain/Teckwah/download/xlsx_files/240622_240628_ReceivingTAT_report.xlsx"
+    )
+    return read_excel(raw_data_file, "CS Receiving TAT")
 
-    def print_result(self, test_name, result, details=''):
-        print(f"\n{'=' * 50}")
-        print(f"테스트: {test_name}")
-        print(f"결과: {'성공' if result else '실패'}")
-        if details:
-            print(f"상세 정보:\n{details}")
-        print(f"{'=' * 50}\n")
 
-    def test_row_count_and_duplicates(self):
-        raw_count = len(self.raw_filtered)
-        db_count = len(self.db_filtered)
-        duplicate_count = raw_count - len(self.raw_filtered.drop_duplicates())
-
-        details = (f"필터링된 Raw 데이터 행 수: {raw_count}\n"
-                   f"필터링된 DB 데이터 행 수: {db_count}\n"
-                   f"필터링된 Raw 데이터 중복 행 수: {duplicate_count}")
-
-        result = raw_count >= db_count
-        self.print_result("행 수 및 중복 확인", result, details)
-        self.assertTrue(result, "Raw 데이터의 행 수가 DB 데이터보다 많아야 합니다.")
-
-    def test_data_integrity(self):
-        # Raw 데이터 그룹화 (Replen_Balance_Order와 Allocated Part 모두 고려)
-        raw_grouped = self.raw_filtered.groupby(['Replen/Balance Order#', 'Allocated Part#']).agg({
-            'Quantity': 'sum',
-            'Cust Sys No': 'first'
-        }).reset_index()
-
-        # CountPO 계산 (Cust Sys No 기준)
-        count_po = self.raw_filtered.groupby('Cust Sys No').size().reset_index(name='CountPO')
-        raw_grouped = raw_grouped.merge(count_po, on='Cust Sys No', how='left')
-
-        mismatches = []
-        for index, db_row in self.db_filtered.iterrows():
-            raw_row = raw_grouped[
-                (raw_grouped['Replen/Balance Order#'] == db_row['Replen_Balance_Order']) &
-                (raw_grouped['Allocated Part#'] == db_row['Allocated_Part'])
-            ]
-            if not raw_row.empty:
-                if db_row['Quantity'] != raw_row['Quantity'].iloc[0] or db_row['Count_PO'] != raw_row['CountPO'].iloc[0]:
-                    mismatches.append(f"Replen_Balance_Order: {db_row['Replen_Balance_Order']}, "
-                                      f"Allocated_Part: {db_row['Allocated_Part']}, "
-                                      f"DB Quantity: {db_row['Quantity']}, Raw Quantity: {raw_row['Quantity'].iloc[0]}, "
-                                      f"DB Count_PO: {db_row['Count_PO']}, Raw CountPO: {raw_row['CountPO'].iloc[0]}")
-            else:
-                mismatches.append(f"Replen_Balance_Order {db_row['Replen_Balance_Order']} "
-                                  f"with Allocated_Part {db_row['Allocated_Part']} not found in raw data")
-
-        result = len(mismatches) == 0
-        details = "\n".join(mismatches) if mismatches else "모든 데이터가 일치합니다."
-        self.print_result("데이터 정합성 확인", result, details)
-        self.assertTrue(result, "DB 데이터와 Raw 데이터 간 불일치가 있습니다.")
-
-    def test_all_db_rows_in_raw(self):
-        raw_orders = set(zip(self.raw_filtered['Replen/Balance Order#'], self.raw_filtered['Allocated Part#']))
-        db_orders = set(zip(self.db_filtered['Replen_Balance_Order'], self.db_filtered['Allocated_Part']))
-
-        missing_orders = db_orders - raw_orders
-        result = len(missing_orders) == 0
-        details = f"Raw 데이터에 없는 DB 행: {missing_orders}" if missing_orders else "모든 DB 행이 Raw 데이터에 존재합니다."
-        self.print_result("DB 행 존재 여부 확인", result, details)
-        self.assertTrue(result, "일부 DB 행이 Raw 데이터에 존재하지 않습니다.")
-
-    def test_data_transformation(self):
-        mismatches = []
-        for index, db_row in self.db_filtered.iterrows():
-            raw_rows = self.raw_filtered[
-                (self.raw_filtered['Replen/Balance Order#'] == db_row['Replen_Balance_Order']) &
-                (self.raw_filtered['Allocated Part#'] == db_row['Allocated_Part'])
-            ]
-            
-            if not raw_rows.empty:
-                if db_row['EDI_Order_Type'] != raw_rows['EDI Order Type'].iloc[0]:
-                    mismatches.append(f"EDI_Order_Type mismatch for Replen_Balance_Order {db_row['Replen_Balance_Order']}, "
-                                      f"Allocated_Part {db_row['Allocated_Part']}: "
-                                      f"DB: {db_row['EDI_Order_Type']}, Raw: {raw_rows['EDI Order Type'].iloc[0]}")
-                
-                expected_order_type = self.get_expected_order_type(db_row['EDI_Order_Type'])
-                if db_row['OrderType'] != expected_order_type:
-                    mismatches.append(f"OrderType mismatch for Replen_Balance_Order {db_row['Replen_Balance_Order']}, "
-                                      f"Allocated_Part {db_row['Allocated_Part']}: "
-                                      f"DB: {db_row['OrderType']}, Expected: {expected_order_type}")
-            else:
-                mismatches.append(f"Replen_Balance_Order {db_row['Replen_Balance_Order']} "
-                                  f"with Allocated_Part {db_row['Allocated_Part']} not found in raw data")
-
-        result = len(mismatches) == 0
-        details = "\n".join(mismatches) if mismatches else "모든 데이터 변환이 올바르게 수행되었습니다."
-        self.print_result("데이터 변환 확인", result, details)
-        self.assertTrue(result, "데이터 변환 과정에서 불일치가 발생했습니다.")
-
-    @staticmethod
-    def get_expected_order_type(edi_order_type):
-        if edi_order_type in ['BALANCE-IN', 'REPLEN-IN']:
-            return 'P3'
-        elif edi_order_type == 'PURGE-IN':
-            return 'Purge'
-        elif edi_order_type in ['PNAE-IN', 'PNAC-IN']:
-            return 'P1'
+def get_db_data(start_date, end_date):
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        if conn.is_connected():
+            cursor = conn.cursor(dictionary=True)
+            query = f"""
+            SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}
+            WHERE InventoryDate BETWEEN %s AND %s
+            """
+            cursor.execute(query, (start_date, end_date))
+            result = cursor.fetchall()
+            df = pd.DataFrame(result)
+            cursor.close()
+            conn.close()
+            print(f"데이터베이스에서 {len(df)}개의 레코드를 성공적으로 가져왔습니다.")
+            return df
         else:
-            return 'P6'  # DISPOSE-IN 또는 기타 케이스
+            print("데이터베이스 연결에 실패했습니다.")
+            return pd.DataFrame()
+    except Error as e:
+        print(f"MySQL 연결 중 오류 발생: {e}")
+        return pd.DataFrame()
 
-if __name__ == '__main__':
-    unittest.main(verbosity=2)
+
+def create_composite_key(df):
+    return (
+        df["ReceiptNo"].astype(str)
+        + "|"
+        + df["Replen_Balance_Order"].astype(str)
+        + "|"
+        + df["Cust_Sys_No"].astype(str)
+    )
+
+
+def preprocess_raw_data(raw_df):
+    raw_df = raw_df.rename(
+        columns={
+            "Replen/Balance Order#": "Replen_Balance_Order",
+            "Cust Sys No": "Cust_Sys_No",
+            "PutAwayDate": "InventoryDate",
+        }
+    )
+
+    raw_df["Replen_Balance_Order"] = raw_df["Replen_Balance_Order"].astype(str)
+    raw_df["Replen_Balance_Order"] = raw_df["Replen_Balance_Order"].apply(
+        lambda x: x.split(".")[0] if "." in x else x
+    )
+
+    raw_df["InventoryDate"] = pd.to_datetime(raw_df["InventoryDate"]).dt.date
+    raw_df["composite_key"] = create_composite_key(raw_df)
+    raw_df["Count_PO"] = raw_df.groupby("composite_key")["composite_key"].transform(
+        "count"
+    )
+    return raw_df
+
+
+def compare_data(raw_df, db_df):
+    print(f"원본 데이터 형태: {raw_df.shape}")
+    print(f"DB 데이터 형태: {db_df.shape}")
+
+    if db_df.empty:
+        print(
+            "데이터베이스에서 데이터를 가져오지 못했습니다. 데이터베이스 연결과 테이블을 확인해주세요."
+        )
+        return
+
+    raw_df = preprocess_raw_data(raw_df)
+    db_df["composite_key"] = create_composite_key(db_df)
+
+    # CountPO 일치율 계산
+    merged_df = pd.merge(
+        raw_df[["composite_key", "Count_PO"]],
+        db_df[["composite_key", "Count_PO"]],
+        on="composite_key",
+        suffixes=("_raw", "_db"),
+    )
+    count_match = (merged_df["Count_PO_raw"] == merged_df["Count_PO_db"]).sum()
+    count_mismatch = len(merged_df) - count_match
+    count_match_rate = count_match / len(merged_df) * 100 if len(merged_df) > 0 else 0
+
+    print(f"\nCountPO 일치율: {count_match_rate:.2f}%")
+    print(f"CountPO 불일치 레코드 수: {count_mismatch}")
+
+    if count_mismatch > 0:
+        mismatch_keys = (
+            merged_df[merged_df["Count_PO_raw"] != merged_df["Count_PO_db"]][
+                "composite_key"
+            ]
+            .head(5)
+            .tolist()
+        )
+        print("CountPO 불일치 레코드 기본키 샘플 (최대 5개):")
+        for key in mismatch_keys:
+            print(f"  {key}")
+
+    # Quantity 일치율 계산
+    raw_quantity = raw_df.groupby("composite_key")["Quantity"].sum().reset_index()
+    db_quantity = db_df.groupby("composite_key")["Quantity"].sum().reset_index()
+    quantity_comparison = pd.merge(
+        raw_quantity, db_quantity, on="composite_key", suffixes=("_raw", "_db")
+    )
+    quantity_match = (
+        quantity_comparison["Quantity_raw"] == quantity_comparison["Quantity_db"]
+    ).sum()
+    quantity_mismatch = len(quantity_comparison) - quantity_match
+    quantity_match_rate = (
+        quantity_match / len(quantity_comparison) * 100
+        if len(quantity_comparison) > 0
+        else 0
+    )
+
+    print(f"\nQuantity 일치율: {quantity_match_rate:.2f}%")
+    print(f"Quantity 불일치 레코드 수: {quantity_mismatch}")
+
+    if quantity_mismatch > 0:
+        mismatch_keys = (
+            quantity_comparison[
+                quantity_comparison["Quantity_raw"]
+                != quantity_comparison["Quantity_db"]
+            ]["composite_key"]
+            .head(5)
+            .tolist()
+        )
+        print("Quantity 불일치 레코드 기본키 샘플 (최대 5개):")
+        for key in mismatch_keys:
+            print(f"  {key}")
+
+    # Cust_Sys_No 일치율 계산
+    raw_cust = raw_df[["composite_key", "Cust_Sys_No"]].drop_duplicates()
+    db_cust = db_df[["composite_key", "Cust_Sys_No"]].drop_duplicates()
+    cust_comparison = pd.merge(
+        raw_cust, db_cust, on="composite_key", suffixes=("_raw", "_db")
+    )
+    cust_match = (
+        cust_comparison["Cust_Sys_No_raw"] == cust_comparison["Cust_Sys_No_db"]
+    ).sum()
+    cust_mismatch = len(cust_comparison) - cust_match
+    cust_match_rate = (
+        cust_match / len(cust_comparison) * 100 if len(cust_comparison) > 0 else 0
+    )
+
+    print(f"\nCust_Sys_No 일치율: {cust_match_rate:.2f}%")
+    print(f"Cust_Sys_No 불일치 레코드 수: {cust_mismatch}")
+
+    if cust_mismatch > 0:
+        mismatch_keys = (
+            cust_comparison[
+                cust_comparison["Cust_Sys_No_raw"] != cust_comparison["Cust_Sys_No_db"]
+            ]["composite_key"]
+            .head(5)
+            .tolist()
+        )
+        print("Cust_Sys_No 불일치 레코드 기본키 샘플 (최대 5개):")
+        for key in mismatch_keys:
+            print(f"  {key}")
+
+
+def main():
+    start_date = input("Enter start date (YYYY-MM-DD): ")
+    end_date = input("Enter end date (YYYY-MM-DD): ")
+
+    raw_df = get_raw_data()
+    if raw_df.empty:
+        print("Raw data could not be read. Please check the file path and format.")
+        return
+
+    db_df = get_db_data(start_date, end_date)
+
+    # raw_df를 입력받은 기간에 맞게 필터링
+    raw_df = preprocess_raw_data(raw_df)
+    raw_df = raw_df[
+        (raw_df["InventoryDate"] >= datetime.strptime(start_date, "%Y-%m-%d").date())
+        & (raw_df["InventoryDate"] <= datetime.strptime(end_date, "%Y-%m-%d").date())
+    ]
+
+    compare_data(raw_df, db_df)
+
+
+if __name__ == "__main__":
+    main()

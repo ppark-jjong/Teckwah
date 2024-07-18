@@ -103,7 +103,7 @@ class WebCrawler:
         """
         try:
             WebDriverWait(self.driver, WEBDRIVER_TIMEOUT).until(
-                EC.presence_of_element_located(
+                EC.presence_of_element_located( 
                     (By.CSS_SELECTOR, "div:nth-child(28)")
                 )
             )

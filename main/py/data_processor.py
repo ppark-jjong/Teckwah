@@ -10,6 +10,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 class DataProcessor:
     def __init__(self, config: Dict[str, Any]):
         """
@@ -28,7 +29,7 @@ class DataProcessor:
             df = self._rename_columns(df)
             df = self._convert_data_types(df)
             df = self._clean_replen_balance_order(df)
-            df = self._handle_ship_from_code(df)  # 새로 추가된 메서드 호출
+            df = self._handle_ship_from_code(df)
             df = self._calculate_fiscal_data(df)
             df = self._map_order_type(df)
             df = self._handle_missing_values(df)
@@ -63,12 +64,10 @@ class DataProcessor:
                 df[col] = pd.to_datetime(df[col], errors="coerce")
 
         if "PutAwayDate" in df.columns and "ActualPhysicalReceiptDate" in df.columns:
-            # PutAwayDate가 NaT(Null)인 경우 ActualPhysicalReceiptDate 값을 사용
             df.loc[df["PutAwayDate"].isnull(), "PutAwayDate"] = df.loc[
                 df["PutAwayDate"].isnull(), "ActualPhysicalReceiptDate"
             ]
 
-            # PutAwayDate에 시간 정보가 없는 경우 ActualPhysicalReceiptDate의 시간 정보를 사용
             mask = df["PutAwayDate"].dt.time == pd.Timestamp("00:00:00").time()
             df.loc[mask, "PutAwayDate"] = df.loc[mask, "PutAwayDate"].dt.date.astype(
                 "datetime64[ns]"
@@ -93,7 +92,7 @@ class DataProcessor:
             numeric_mask = df["Replen_Balance_Order"].str.isnumeric()
             df.loc[numeric_mask, "Replen_Balance_Order"] = pd.to_numeric(
                 df.loc[numeric_mask, "Replen_Balance_Order"], errors="coerce"
-            ).astype("Int64")
+            ).astype("int64")
         return df
 
     def get_fy_start(self, date: datetime.date) -> datetime.date:
@@ -167,17 +166,27 @@ class DataProcessor:
         결측값을 처리합니다.
         """
         for col in df.columns:
-            if df[col].dtype == "object":
+            if pd.api.types.is_object_dtype(df[col]):
                 df[col] = df[col].fillna("")
-            elif df[col].dtype in ["int64", "float64"]:
+            elif pd.api.types.is_numeric_dtype(df[col]):
                 df[col] = df[col].fillna(0)
         return df
 
     def _calculate_count_po(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Count_PO 컬럼을 계산합니다.
+        Count_PO 컬럼을 계산하고 Quantity를 합산합니다.
         """
-        df["Count_PO"] = df.groupby("Cust_Sys_No")["Cust_Sys_No"].transform("count")
+        grouped = (
+            df.groupby("Cust_Sys_No")
+            .agg({"Cust_Sys_No": "count", "Quantity": "sum"})
+            .rename(columns={"Cust_Sys_No": "Count_PO"})
+        )
+
+        df = df.merge(grouped, on="Cust_Sys_No", suffixes=("", "_sum"))
+
+        df["Quantity"] = df["Quantity_sum"]
+        df = df.drop(columns=["Quantity_sum"])
+
         return df
 
     def _handle_ship_from_code(self, df: pd.DataFrame) -> pd.DataFrame:

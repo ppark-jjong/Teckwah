@@ -3,7 +3,7 @@ import mysql.connector
 from mysql.connector import Error
 from config import DB_CONFIG, RECEIVING_TAT_REPORT_TABLE
 import pyxlsb
-
+from datetime import datetime
 
 def read_xlsb(filepath, sheet_name):
     with pyxlsb.open_workbook(filepath) as wb:
@@ -11,11 +11,9 @@ def read_xlsb(filepath, sheet_name):
             data = [[c.v for c in r] for r in sheet.rows()]
     return pd.DataFrame(data[1:], columns=data[0])
 
-
 def get_raw_data():
-    raw_data_file = "C:/MyMain/Teckwah/download/240706_240712_ReceivingTAT_report.xlsx"
-    return read_xlsb(raw_data_file, "Receiving_TAT")
-
+    raw_data_file = "C:/MyMain/test/Dashboard_Raw Data.xlsb"
+    return read_xlsb(raw_data_file, "Receiving TAT")
 
 def get_db_data():
     try:
@@ -36,7 +34,6 @@ def get_db_data():
         print(f"MySQL 연결 중 오류 발생: {e}")
         return pd.DataFrame()
 
-
 def create_composite_key(df):
     return (
         df["ReceiptNo"].astype(str)
@@ -46,7 +43,6 @@ def create_composite_key(df):
         + df["Cust_Sys_No"].astype(str)
     )
 
-
 def preprocess_raw_data(raw_df):
     raw_df = raw_df.rename(
         columns={
@@ -55,33 +51,26 @@ def preprocess_raw_data(raw_df):
         }
     )
 
-    # Replen_Balance_Order 컬럼 타입 처리
     raw_df["Replen_Balance_Order"] = raw_df["Replen_Balance_Order"].astype(str)
     raw_df["Replen_Balance_Order"] = raw_df["Replen_Balance_Order"].apply(
         lambda x: x.split(".")[0] if "." in x else x
     )
 
     raw_df["composite_key"] = create_composite_key(raw_df)
-    raw_df["Count_PO"] = raw_df.groupby("composite_key")["composite_key"].transform(
-        "count"
-    )
+    raw_df["Count_PO"] = raw_df.groupby("composite_key")["composite_key"].transform("count")
     return raw_df
-
 
 def compare_data(raw_df, db_df):
     print(f"원본 데이터 형태: {raw_df.shape}")
     print(f"DB 데이터 형태: {db_df.shape}")
 
     if db_df.empty:
-        print(
-            "데이터베이스에서 데이터를 가져오지 못했습니다. 데이터베이스 연결과 테이블을 확인해주세요."
-        )
+        print("데이터베이스에서 데이터를 가져오지 못했습니다. 데이터베이스 연결과 테이블을 확인해주세요.")
         return
 
     raw_df = preprocess_raw_data(raw_df)
     db_df["composite_key"] = create_composite_key(db_df)
 
-    # 중복키 일치 확인
     db_keys = set(db_df["composite_key"])
     raw_keys = set(raw_df["composite_key"])
     missing_in_db = raw_keys - db_keys
@@ -90,12 +79,10 @@ def compare_data(raw_df, db_df):
     print(f"DB에 없는 원본 데이터 키 수: {len(missing_in_db)}")
     print(f"원본 데이터에 없는 DB 키 수: {len(extra_in_db)}")
 
-    # Replen_Balance_Order 타입 비교
     print(f"\nReplen_Balance_Order 데이터 타입:")
     print(f"원본 데이터: {raw_df['Replen_Balance_Order'].dtype}")
     print(f"DB 데이터: {db_df['Replen_Balance_Order'].dtype}")
 
-    # Replen_Balance_Order 값 비교
     raw_replen = set(raw_df["Replen_Balance_Order"])
     db_replen = set(db_df["Replen_Balance_Order"])
 
@@ -106,7 +93,6 @@ def compare_data(raw_df, db_df):
         print("Replen_Balance_Order 불일치 값 샘플 (최대 5개):")
         print(list(replen_mismatch)[:5])
 
-    # CountPO 정확성 검증
     merged_df = pd.merge(
         raw_df.groupby("composite_key").agg({"Count_PO": "first"}),
         db_df[["composite_key", "Count_PO"]],
@@ -116,7 +102,6 @@ def compare_data(raw_df, db_df):
     count_mismatch = merged_df[merged_df["Count_PO_raw"] != merged_df["Count_PO_db"]]
     print(f"CountPO 불일치 레코드 수: {len(count_mismatch)}")
 
-    # 필드값 비교 (예: Quantity)
     raw_quantity = raw_df.groupby("composite_key")["Quantity"].sum().reset_index()
     db_quantity = db_df[["composite_key", "Quantity"]]
     quantity_comparison = pd.merge(
@@ -127,7 +112,6 @@ def compare_data(raw_df, db_df):
     ]
     print(f"Quantity 합계 불일치 레코드 수: {len(quantity_mismatch)}")
 
-    # 샘플 데이터 출력
     if len(missing_in_db) > 0:
         print("\nDB에 없는 원본 데이터 키 샘플 (최대 5개):")
         print(list(missing_in_db)[:5])
@@ -144,12 +128,10 @@ def compare_data(raw_df, db_df):
         print("\nQuantity 합계 불일치 샘플 (최대 5개):")
         print(quantity_mismatch.head())
 
-
 def main():
     raw_df = get_raw_data()
     db_df = get_db_data()
     compare_data(raw_df, db_df)
-
 
 if __name__ == "__main__":
     main()
