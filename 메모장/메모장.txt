@@ -1,0 +1,33 @@
+        raw_data_file = "C:/MyMain/Test/3.012_CS_Receiving_TAT_Report_accumulated.xlsb"
+
+
+ 현재 코드 구조
+
+config.py: 설정 정보를 저장
+database.py: 데이터베이스 관련 기능
+web_crawler.py: 웹 크롤링 관련 기능
+data_processor.py: 데이터 처리 관련 기능
+file_handler.py: 파일 처리 관련 기능
+main.py: 메인 실행 스크립트
+login_crawling.py : 크롤링을 위한 처리 관련 기능
+test.py : 원본데이터와 DB데이터 비교 테스트 기능
+
+
+이제 너는 나와 같이 데이터 엔지니어링을 시작할꺼야
+크롤링과 데이터 변환 적재를 하고 추출과 이메일 보내기까지 만든 후에 전반적인 프로세스 성능 강화 및 오류 개선을 할꺼야
+아주 고급 전문가로써 나에게 가르쳐 주면돼
+
+    raw_data_file = "C:/MyMain/Teckwah/download/xlsx_files/240706_240712_ReceivingTAT_report.xlsx"
+    return read_xlsx(raw_data_file, "Receiving_TAT")
+
+
+
+- FY25 Q1, Q2 데이터 분석
+    - WK별 입고 트렌드 분석 및 결과 지표 처리
+        - 오더 개수 (po개수)
+        - 오더 수량 (Quantity 개수)
+        - ShipTo별 오더 개수 및 오더 수량
+
+
+DB의 FY와 Quarter 컬럼을 이용하여 
+지정된 FY와 Quarter 값이 일치하는 레코드들을 대상으로 

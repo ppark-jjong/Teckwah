@@ -24,6 +24,12 @@ def get_database_data(query):
     conn.close()
     return data
 
+def export_to_csv(data, file_path):
+    """데이터를 CSV 파일로 내보냅니다."""
+    df = pd.DataFrame(data)
+    df.to_csv(file_path, index=False)
+    print(f"데이터가 성공적으로 {file_path}에 내보내졌습니다.")
+
 def send_email_with_attachment(email_config, file_path):
     """첨부 파일과 함께 이메일을 보냅니다."""
     msg = MIMEMultipart()
@@ -56,6 +62,7 @@ if __name__ == "__main__":
     db_data = get_database_data(query)
     
     csv_file_path = "C:\\MyMain\\Teckwah\\download\\exported_data.csv"
+    export_to_csv(db_data, csv_file_path)
     
     email_config = {
         'from_email': 'parkjonghyeok2000@gmail.com',        # 보내는 사람 이메일 주소

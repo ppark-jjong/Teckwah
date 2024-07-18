@@ -14,7 +14,6 @@ from config import (
 
 logger = logging.getLogger(__name__)
 
-
 class MySQLConnectionPool:
     def __init__(self):
         """
@@ -238,26 +237,3 @@ def get_data_by_inventory_date(start_date: str, end_date: str) -> pd.DataFrame:
         result = conn.cursor.fetchall()
         columns = [i[0] for i in conn.cursor.description]
         return pd.DataFrame(result, columns=columns)
-
-
-def get_data_by_fy_and_quarter(fy: str, quarter: str) -> pd.DataFrame:
-    """
-    지정된 FY와 Quarter에 해당하는 데이터를 데이터베이스에서 추출합니다.
-
-    :param fy: 회계연도 (예: 'FY23')
-    :param quarter: 분기 (예: 'Q1', 'Q2')
-    :return: 추출된 데이터를 포함하는 DataFrame
-    """
-    query = f"""
-    SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}
-    WHERE FY = %s AND Quarter = %s
-    """
-    try:
-        with MySQLConnectionPool() as conn:
-            conn.execute_query(query, (fy, quarter))
-            result = conn.cursor.fetchall()
-            columns = [i[0] for i in conn.cursor.description]
-            return pd.DataFrame(result, columns=columns)
-    except Exception as e:
-        logger.error(f"데이터베이스에서 데이터를 가져오는 중 오류 발생: {str(e)}")
-        return pd.DataFrame()  # 빈 DataFrame 반환
