@@ -75,6 +75,10 @@ def preprocess_raw_data(raw_df):
     raw_df["Count_PO"] = raw_df.groupby("composite_key")["composite_key"].transform(
         "count"
     )
+    
+    # Country 컬럼이 KR인 데이터만 필터링
+    raw_df = raw_df[raw_df["Country"] == "KR"]
+    
     return raw_df
 
 
@@ -88,10 +92,39 @@ def compare_data(raw_df, db_df):
         )
         return
 
-    raw_df = preprocess_raw_data(raw_df)
     db_df["composite_key"] = create_composite_key(db_df)
 
-    # CountPO 일치율 계산
+    # Cust_Sys_No 비교
+    raw_unique_cust_sys_no = set(raw_df["Cust_Sys_No"].unique())
+    db_cust_sys_no = set(db_df["Cust_Sys_No"])
+
+    in_raw_not_in_db = raw_unique_cust_sys_no - db_cust_sys_no
+    common_cust_sys_no = raw_unique_cust_sys_no.intersection(db_cust_sys_no)
+
+    print(f"\n1. Cust_Sys_No 비교:")
+    print(f"   원본 데이터의 유니크한 Cust_Sys_No 수: {len(raw_unique_cust_sys_no)}")
+    print(f"   DB의 Cust_Sys_No 수: {len(db_cust_sys_no)}")
+    print(
+        f"   원본 데이터에는 있지만 DB에 없는 Cust_Sys_No 수: {len(in_raw_not_in_db)}"
+    )
+    print(f"   공통된 Cust_Sys_No 수: {len(common_cust_sys_no)}")
+
+    match_rate = len(common_cust_sys_no) / len(raw_unique_cust_sys_no) * 100
+    print(f"   원본 데이터의 Cust_Sys_No가 DB에 존재하는 비율: {match_rate:.2f}%")
+
+    if in_raw_not_in_db:
+        print("   원본 데이터에만 있는 Cust_Sys_No 샘플 (최대 5개):")
+        print("   ", list(in_raw_not_in_db)[:5])
+
+    # 원본 데이터의 중복 레코드 확인
+    raw_duplicates = raw_df[raw_df.duplicated(subset="Cust_Sys_No", keep=False)]
+    print(f"\n   원본 데이터의 중복된 Cust_Sys_No 수: {len(raw_duplicates)}")
+
+    if not raw_duplicates.empty:
+        print("   원본 데이터의 중복 Cust_Sys_No 샘플 (최대 5개):")
+        print(raw_duplicates["Cust_Sys_No"].head())
+
+    # CountPO 비교
     merged_df = pd.merge(
         raw_df[["composite_key", "Count_PO"]],
         db_df[["composite_key", "Count_PO"]],
@@ -102,8 +135,9 @@ def compare_data(raw_df, db_df):
     count_mismatch = len(merged_df) - count_match
     count_match_rate = count_match / len(merged_df) * 100 if len(merged_df) > 0 else 0
 
-    print(f"\nCountPO 일치율: {count_match_rate:.2f}%")
-    print(f"CountPO 불일치 레코드 수: {count_mismatch}")
+    print(f"\n2. CountPO 비교:")
+    print(f"   CountPO 일치율: {count_match_rate:.2f}%")
+    print(f"   CountPO 불일치 레코드 수: {count_mismatch}")
 
     if count_mismatch > 0:
         mismatch_keys = (
@@ -113,11 +147,11 @@ def compare_data(raw_df, db_df):
             .head(5)
             .tolist()
         )
-        print("CountPO 불일치 레코드 기본키 샘플 (최대 5개):")
+        print("   CountPO 불일치 레코드 기본키 샘플 (최대 5개):")
         for key in mismatch_keys:
-            print(f"  {key}")
+            print(f"     {key}")
 
-    # Quantity 일치율 계산
+    # Quantity 비교
     raw_quantity = raw_df.groupby("composite_key")["Quantity"].sum().reset_index()
     db_quantity = db_df.groupby("composite_key")["Quantity"].sum().reset_index()
     quantity_comparison = pd.merge(
@@ -133,8 +167,9 @@ def compare_data(raw_df, db_df):
         else 0
     )
 
-    print(f"\nQuantity 일치율: {quantity_match_rate:.2f}%")
-    print(f"Quantity 불일치 레코드 수: {quantity_mismatch}")
+    print(f"\n3. Quantity 비교:")
+    print(f"   Quantity 일치율: {quantity_match_rate:.2f}%")
+    print(f"   Quantity 불일치 레코드 수: {quantity_mismatch}")
 
     if quantity_mismatch > 0:
         mismatch_keys = (
@@ -145,38 +180,9 @@ def compare_data(raw_df, db_df):
             .head(5)
             .tolist()
         )
-        print("Quantity 불일치 레코드 기본키 샘플 (최대 5개):")
+        print("   Quantity 불일치 레코드 기본키 샘플 (최대 5개):")
         for key in mismatch_keys:
-            print(f"  {key}")
-
-    # Cust_Sys_No 일치율 계산
-    raw_cust = raw_df[["composite_key", "Cust_Sys_No"]].drop_duplicates()
-    db_cust = db_df[["composite_key", "Cust_Sys_No"]].drop_duplicates()
-    cust_comparison = pd.merge(
-        raw_cust, db_cust, on="composite_key", suffixes=("_raw", "_db")
-    )
-    cust_match = (
-        cust_comparison["Cust_Sys_No_raw"] == cust_comparison["Cust_Sys_No_db"]
-    ).sum()
-    cust_mismatch = len(cust_comparison) - cust_match
-    cust_match_rate = (
-        cust_match / len(cust_comparison) * 100 if len(cust_comparison) > 0 else 0
-    )
-
-    print(f"\nCust_Sys_No 일치율: {cust_match_rate:.2f}%")
-    print(f"Cust_Sys_No 불일치 레코드 수: {cust_mismatch}")
-
-    if cust_mismatch > 0:
-        mismatch_keys = (
-            cust_comparison[
-                cust_comparison["Cust_Sys_No_raw"] != cust_comparison["Cust_Sys_No_db"]
-            ]["composite_key"]
-            .head(5)
-            .tolist()
-        )
-        print("Cust_Sys_No 불일치 레코드 기본키 샘플 (최대 5개):")
-        for key in mismatch_keys:
-            print(f"  {key}")
+            print(f"     {key}")
 
 
 def main():

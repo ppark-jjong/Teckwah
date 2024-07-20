@@ -1,0 +1,370 @@
+2024-07-19 13:26:17,899 - INFO - Connection pool created successfully
+2024-07-19 13:26:17,900 - INFO - Connection acquired from pool
+2024-07-19 13:26:17,919 - INFO - Connection returned to pool
+2024-07-19 13:26:17,919 - INFO - Tables created successfully
+2024-07-19 13:26:17,920 - INFO - 지정된 파일을 처리합니다.
+2024-07-19 13:26:17,922 - INFO - 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 처리 시작
+2024-07-19 13:26:17,922 - INFO - 엑셀 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 읽기 시작
+2024-07-19 13:26:18,626 - INFO - 엑셀 파일에서 1307 행의 데이터를 읽었습니다.
+2024-07-19 13:26:18,626 - INFO - 데이터 처리 중...
+2024-07-19 13:26:18,626 - ERROR - 파일 처리 중 오류 발생: name 'DataProcessor' is not defined
+Traceback (most recent call last):
+  File "c:\MyMain\Teckwah\main\py\main2.py", line 66, in process_and_upload_data
+    processor = DataProcessor(config)
+                ^^^^^^^^^^^^^
+NameError: name 'DataProcessor' is not defined
+2024-07-19 13:28:00,117 - INFO - Connection pool created successfully
+2024-07-19 13:28:00,118 - INFO - Connection acquired from pool
+2024-07-19 13:28:00,137 - INFO - Connection returned to pool
+2024-07-19 13:28:00,137 - INFO - Tables created successfully
+2024-07-19 13:28:00,138 - INFO - 지정된 파일을 처리합니다.
+2024-07-19 13:28:00,138 - INFO - 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 처리 시작
+2024-07-19 13:28:00,138 - INFO - 엑셀 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 읽기 시작
+2024-07-19 13:28:00,752 - INFO - 엑셀 파일에서 1307 행의 데이터를 읽었습니다.
+2024-07-19 13:28:00,753 - INFO - 데이터 처리 중...
+2024-07-19 13:28:00,753 - INFO - Original columns: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:28:00,753 - INFO - Columns before renaming: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:28:00,753 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:28:00,753 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:28:00,779 - ERROR - 파일 처리 중 오류 발생: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+Traceback (most recent call last):
+  File "c:\MyMain\Teckwah\main\py\main2.py", line 61, in process_and_upload_data
+    processed_df, stats = main_data_processing(df, config)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 193, in main_data_processing
+    processed_df, stats = processor.process_dataframe(df)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 22, in process_dataframe
+    df = self._calculate_fiscal_data(df)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 92, in _calculate_fiscal_data
+    fiscal_data = df["PutAwayDate"].dt.date.apply(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\series.py", line 4924, in apply
+    ).apply()
+      ^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1427, in apply
+    return self.apply_standard()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1507, in apply_standard
+    mapped = obj._map_values(
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\base.py", line 921, in _map_values
+    return algorithms.map_array(arr, mapper, na_action=na_action, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\algorithms.py", line 1743, in map_array
+    return lib.map_infer(values, mapper, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "lib.pyx", line 2972, in pandas._libs.lib.map_infer
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 94, in <lambda>
+    self.get_dell_week_and_fy(x)
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 173, in get_dell_week_and_fy
+    if date < fy_start:
+       ^^^^^^^^^^^^^^^
+  File "timestamps.pyx", line 377, in pandas._libs.tslibs.timestamps._Timestamp.__richcmp__
+TypeError: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+2024-07-19 13:31:15,033 - INFO - Connection pool created successfully
+2024-07-19 13:31:15,034 - INFO - Connection acquired from pool
+2024-07-19 13:31:15,051 - INFO - Connection returned to pool
+2024-07-19 13:31:15,051 - INFO - Tables created successfully
+2024-07-19 13:31:15,052 - INFO - 지정된 파일을 처리합니다.
+2024-07-19 13:31:15,053 - INFO - 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 처리 시작
+2024-07-19 13:31:15,053 - INFO - 엑셀 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 읽기 시작
+2024-07-19 13:31:15,710 - INFO - 엑셀 파일에서 1307 행의 데이터를 읽었습니다.
+2024-07-19 13:31:15,710 - INFO - 데이터 처리 중...
+2024-07-19 13:31:15,710 - INFO - Original columns: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:31:15,710 - INFO - Columns before renaming: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:31:15,712 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:31:15,712 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:31:15,727 - ERROR - 파일 처리 중 오류 발생: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+Traceback (most recent call last):
+  File "c:\MyMain\Teckwah\main\py\main2.py", line 61, in process_and_upload_data
+    processed_df, stats = main_data_processing(df, config)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 193, in main_data_processing
+    processed_df, stats = processor.process_dataframe(df)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 22, in process_dataframe
+    df = self._calculate_fiscal_data(df)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 92, in _calculate_fiscal_data
+    fiscal_data = df["PutAwayDate"].dt.date.apply(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\series.py", line 4924, in apply
+    ).apply()
+      ^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1427, in apply
+    return self.apply_standard()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1507, in apply_standard
+    mapped = obj._map_values(
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\base.py", line 921, in _map_values
+    return algorithms.map_array(arr, mapper, na_action=na_action, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\algorithms.py", line 1743, in map_array
+    return lib.map_infer(values, mapper, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "lib.pyx", line 2972, in pandas._libs.lib.map_infer
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 94, in <lambda>
+    self.get_dell_week_and_fy(x)
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 173, in get_dell_week_and_fy
+    if date < fy_start:
+       ^^^^^^^^^^^^^^^
+  File "timestamps.pyx", line 377, in pandas._libs.tslibs.timestamps._Timestamp.__richcmp__
+TypeError: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+2024-07-19 13:33:21,945 - INFO - Connection pool created successfully
+2024-07-19 13:33:21,945 - INFO - Connection acquired from pool
+2024-07-19 13:33:21,964 - INFO - Connection returned to pool
+2024-07-19 13:33:21,964 - INFO - Tables created successfully
+2024-07-19 13:33:21,965 - INFO - 지정된 파일을 처리합니다.
+2024-07-19 13:33:21,965 - INFO - 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 처리 시작
+2024-07-19 13:33:21,965 - INFO - 엑셀 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 읽기 시작
+2024-07-19 13:33:22,558 - INFO - 엑셀 파일에서 1307 행의 데이터를 읽었습니다.
+2024-07-19 13:33:22,558 - INFO - 데이터 처리 중...
+2024-07-19 13:33:22,558 - INFO - Original columns: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:33:22,558 - INFO - Columns before renaming: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:33:22,559 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:33:22,559 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:33:22,572 - ERROR - 파일 처리 중 오류 발생: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+Traceback (most recent call last):
+  File "c:\MyMain\Teckwah\main\py\main2.py", line 61, in process_and_upload_data
+    processed_df, stats = main_data_processing(df, config)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 193, in main_data_processing
+    processed_df, stats = processor.process_dataframe(df)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 22, in process_dataframe
+    df = self._calculate_fiscal_data(df)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 92, in _calculate_fiscal_data
+    fiscal_data = df["PutAwayDate"].dt.date.apply(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\series.py", line 4924, in apply
+    ).apply()
+      ^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1427, in apply
+    return self.apply_standard()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1507, in apply_standard
+    mapped = obj._map_values(
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\base.py", line 921, in _map_values
+    return algorithms.map_array(arr, mapper, na_action=na_action, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\algorithms.py", line 1743, in map_array
+    return lib.map_infer(values, mapper, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "lib.pyx", line 2972, in pandas._libs.lib.map_infer
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 94, in <lambda>
+    self.get_dell_week_and_fy(x)
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 173, in get_dell_week_and_fy
+    if date < fy_start:
+       ^^^^^^^^^^^^^^^
+  File "timestamps.pyx", line 377, in pandas._libs.tslibs.timestamps._Timestamp.__richcmp__
+TypeError: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+2024-07-19 13:35:47,765 - INFO - Report를 찾고 다운로드를 시작합니다.
+2024-07-19 13:35:56,544 - INFO - 다운로드된 파일의 이름을 변경합니다.
+2024-07-19 13:35:56,547 - INFO - 파일 이름이 240622_240628_ReceivingTAT_report.xlsx(으)로 변경되었습니다.
+2024-07-19 13:35:56,588 - INFO - Connection pool created successfully
+2024-07-19 13:35:56,589 - INFO - Connection acquired from pool
+2024-07-19 13:35:56,594 - INFO - Connection returned to pool
+2024-07-19 13:35:56,595 - INFO - Tables created successfully
+2024-07-19 13:35:56,596 - INFO - 다운로드된 파일을 처리합니다.
+2024-07-19 13:35:56,596 - INFO - 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 처리 시작
+2024-07-19 13:35:56,596 - INFO - 엑셀 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 읽기 시작
+2024-07-19 13:35:57,197 - INFO - 엑셀 파일에서 1307 행의 데이터를 읽었습니다.
+2024-07-19 13:35:57,197 - INFO - 데이터 처리 중...
+2024-07-19 13:35:57,197 - INFO - Original columns: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:35:57,197 - INFO - Columns before renaming: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:35:57,198 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:35:57,198 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:35:57,210 - ERROR - 파일 처리 중 오류 발생: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+Traceback (most recent call last):
+  File "c:\MyMain\Teckwah\main\py\weekly_main.py", line 77, in process_and_upload_data
+    processed_df, stats = main_data_processing(df, config)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 193, in main_data_processing
+    processed_df, stats = processor.process_dataframe(df)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 22, in process_dataframe
+    df = self._calculate_fiscal_data(df)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 92, in _calculate_fiscal_data
+    fiscal_data = df["PutAwayDate"].dt.date.apply(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\series.py", line 4924, in apply
+    ).apply()
+      ^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1427, in apply
+    return self.apply_standard()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1507, in apply_standard
+    mapped = obj._map_values(
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\base.py", line 921, in _map_values
+    return algorithms.map_array(arr, mapper, na_action=na_action, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\algorithms.py", line 1743, in map_array
+    return lib.map_infer(values, mapper, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "lib.pyx", line 2972, in pandas._libs.lib.map_infer
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 94, in <lambda>
+    self.get_dell_week_and_fy(x)
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 173, in get_dell_week_and_fy
+    if date < fy_start:
+       ^^^^^^^^^^^^^^^
+  File "timestamps.pyx", line 377, in pandas._libs.tslibs.timestamps._Timestamp.__richcmp__
+TypeError: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+2024-07-19 13:35:59,442 - INFO - 웹 크롤러를 종료합니다.
+2024-07-19 13:38:09,273 - INFO - Report를 찾고 다운로드를 시작합니다.
+2024-07-19 13:38:23,596 - INFO - 다운로드된 파일의 이름을 변경합니다.
+2024-07-19 13:38:23,599 - INFO - 파일 이름이 240622_240628_ReceivingTAT_report.xlsx(으)로 변경되었습니다.
+2024-07-19 13:38:23,644 - INFO - Connection pool created successfully
+2024-07-19 13:38:23,645 - INFO - Connection acquired from pool
+2024-07-19 13:38:23,663 - INFO - Connection returned to pool
+2024-07-19 13:38:23,664 - INFO - Tables created successfully
+2024-07-19 13:38:23,665 - INFO - 다운로드된 파일을 처리합니다.
+2024-07-19 13:38:23,665 - INFO - 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 처리 시작
+2024-07-19 13:38:23,665 - INFO - 엑셀 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 읽기 시작
+2024-07-19 13:38:24,298 - INFO - 엑셀 파일에서 1307 행의 데이터를 읽었습니다.
+2024-07-19 13:38:24,298 - INFO - 데이터 처리 중...
+2024-07-19 13:38:24,298 - INFO - Original columns: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:38:24,298 - INFO - Columns before renaming: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:38:24,299 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:38:24,299 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:38:24,311 - ERROR - 파일 처리 중 오류 발생: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+Traceback (most recent call last):
+  File "c:\MyMain\Teckwah\main\py\weekly_main.py", line 77, in process_and_upload_data
+    processed_df, stats = main_data_processing(df, config)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 193, in main_data_processing
+    processed_df, stats = processor.process_dataframe(df)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 22, in process_dataframe
+    df = self._calculate_fiscal_data(df)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 92, in _calculate_fiscal_data
+    fiscal_data = df["PutAwayDate"].dt.date.apply(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\series.py", line 4924, in apply
+    ).apply()
+      ^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1427, in apply
+    return self.apply_standard()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1507, in apply_standard
+    mapped = obj._map_values(
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\base.py", line 921, in _map_values
+    return algorithms.map_array(arr, mapper, na_action=na_action, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\algorithms.py", line 1743, in map_array
+    return lib.map_infer(values, mapper, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "lib.pyx", line 2972, in pandas._libs.lib.map_infer
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 94, in <lambda>
+    self.get_dell_week_and_fy(x)
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 173, in get_dell_week_and_fy
+    if date < fy_start:
+       ^^^^^^^^^^^^^^^
+  File "timestamps.pyx", line 377, in pandas._libs.tslibs.timestamps._Timestamp.__richcmp__
+TypeError: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+2024-07-19 13:38:26,563 - INFO - 웹 크롤러를 종료합니다.
+2024-07-19 13:43:55,247 - INFO - Connection pool created successfully
+2024-07-19 13:43:55,248 - INFO - Connection acquired from pool
+2024-07-19 13:43:55,264 - INFO - Connection returned to pool
+2024-07-19 13:43:55,264 - INFO - Tables created successfully
+2024-07-19 13:43:55,265 - INFO - 지정된 파일을 처리합니다.
+2024-07-19 13:43:55,265 - INFO - 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 처리 시작
+2024-07-19 13:43:55,265 - INFO - 엑셀 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 읽기 시작
+2024-07-19 13:43:55,816 - INFO - 엑셀 파일에서 1307 행의 데이터를 읽었습니다.
+2024-07-19 13:43:55,816 - INFO - 데이터 처리 중...
+2024-07-19 13:43:55,816 - INFO - Original columns: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:43:55,816 - INFO - Columns before renaming: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:43:55,816 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:43:55,816 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:43:55,826 - ERROR - 파일 처리 중 오류 발생: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+Traceback (most recent call last):
+  File "c:\MyMain\Teckwah\main\py\main2.py", line 68, in process_and_upload_data
+    processed_df, stats = main_data_processing(df, config)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 193, in main_data_processing
+    processed_df, stats = processor.process_dataframe(df)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 22, in process_dataframe
+    df = self._calculate_fiscal_data(df)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 92, in _calculate_fiscal_data
+    fiscal_data = df["PutAwayDate"].dt.date.apply(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\series.py", line 4924, in apply
+    ).apply()
+      ^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1427, in apply
+    return self.apply_standard()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1507, in apply_standard
+    mapped = obj._map_values(
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\base.py", line 921, in _map_values
+    return algorithms.map_array(arr, mapper, na_action=na_action, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\algorithms.py", line 1743, in map_array
+    return lib.map_infer(values, mapper, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "lib.pyx", line 2972, in pandas._libs.lib.map_infer
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 94, in <lambda>
+    self.get_dell_week_and_fy(x)
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 173, in get_dell_week_and_fy
+    if date < fy_start:
+       ^^^^^^^^^^^^^^^
+  File "timestamps.pyx", line 377, in pandas._libs.tslibs.timestamps._Timestamp.__richcmp__
+TypeError: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+2024-07-19 13:45:22,038 - INFO - Connection pool created successfully
+2024-07-19 13:45:22,039 - INFO - Connection acquired from pool
+2024-07-19 13:45:22,224 - INFO - Connection returned to pool
+2024-07-19 13:45:22,224 - INFO - Tables created successfully
+2024-07-19 13:45:22,226 - INFO - 엑셀 파일 'C:\MyMain\Teckwah\download\xlsx_files\240622_240628_ReceivingTAT_report.xlsx' 읽기 시작
+2024-07-19 13:45:22,830 - INFO - 엑셀 파일에서 1307 행의 데이터를 읽었습니다.
+2024-07-19 13:45:22,831 - INFO - Original columns: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:45:22,831 - INFO - Columns before renaming: ['ReceiptNo', 'Replen/Balance Order#', 'Cust Sys No', 'Allocated Part#', 'EDI Order Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:45:22,833 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:45:22,833 - INFO - Columns after renaming: ['ReceiptNo', 'Replen_Balance_Order', 'Cust_Sys_No', 'Allocated_Part', 'EDI_Order_Type', 'ShipFromCode', 'ShipToCode', 'Country', 'Region', 'Quantity', 'ActualPhysicalReceiptDate', 'PutAwayDate', 'Meet KPI', 'PutAwayDate - ActualPhysicalReceiptDate (In Mins)', 'Inbound KPI ']
+2024-07-19 13:45:22,846 - ERROR - 파일 처리 중 오류 발생: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.
+Traceback (most recent call last):
+  File "c:\MyMain\Teckwah\main\py\main2.py", line 73, in process_and_upload_data
+    processed_df, stats = main_data_processing(df, config)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 193, in main_data_processing
+    processed_df, stats = processor.process_dataframe(df)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 22, in process_dataframe
+    df = self._calculate_fiscal_data(df)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 92, in _calculate_fiscal_data
+    fiscal_data = df["PutAwayDate"].dt.date.apply(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\series.py", line 4924, in apply
+    ).apply()
+      ^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1427, in apply
+    return self.apply_standard()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\apply.py", line 1507, in apply_standard
+    mapped = obj._map_values(
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\base.py", line 921, in _map_values
+    return algorithms.map_array(arr, mapper, na_action=na_action, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\algorithms.py", line 1743, in map_array
+    return lib.map_infer(values, mapper, convert=convert)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "lib.pyx", line 2972, in pandas._libs.lib.map_infer
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 94, in <lambda>
+    self.get_dell_week_and_fy(x)
+  File "c:\MyMain\Teckwah\main\py\data_processor.py", line 173, in get_dell_week_and_fy
+    if date < fy_start:
+       ^^^^^^^^^^^^^^^
+  File "timestamps.pyx", line 377, in pandas._libs.tslibs.timestamps._Timestamp.__richcmp__
+TypeError: Cannot compare Timestamp with datetime.date. Use ts == pd.Timestamp(date) or ts.date() == date instead.

@@ -1,6 +1,7 @@
 import os
 import logging
 from typing import Dict, Any
+import warnings
 import pandas as pd
 from config import (
     DOWNLOAD_FOLDER,
@@ -33,48 +34,57 @@ def setup_config() -> Dict[str, Any]:
         "ORDER_TYPE_MAPPING": ORDER_TYPE_MAPPING,
     }
 
-def get_user_input() -> tuple:
+def get_user_input() -> str:
     """
-    사용자로부터 입력을 받아 반환합니다.
+    사용자로부터 파일 이름을 입력받습니다.
     """
-    file_name = input("Enter the file name (including extension): ")
-    return file_name
+    return input("처리할 파일 이름을 입력하세요 (확장자 포함): ")
 
 def read_excel(filepath: str, sheet_name: str) -> pd.DataFrame:
     """
     엑셀 파일을 읽어 데이터프레임으로 반환합니다.
     """
     try:
-        logger.info(f"엑셀 파일 '{filepath}' 읽기 시작")
-        df = pd.read_excel(filepath, sheet_name=sheet_name)
-        logger.info(f"엑셀 파일에서 {len(df)} 행의 데이터를 읽었습니다.")
+        print(f"엑셀 파일 '{filepath}' 읽기 시작")
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+            df = pd.read_excel(filepath, sheet_name=sheet_name)
+        print(f"엑셀 파일에서 {len(df)} 행의 데이터를 읽었습니다.")
         return df
     except Exception as e:
-        logger.error(f"엑셀 파일 읽기 실패: {str(e)}")
+        print(f"엑셀 파일 읽기 실패: {str(e)}")
         raise
 
 def process_and_upload_data(file_path: str, config: Dict[str, Any]):
     try:
-        logger.info(f"파일 '{file_path}' 처리 시작")
+        print(f"\n{'='*50}")
+        print(f"파일 '{os.path.basename(file_path)}' 처리 시작")
+        print(f"{'='*50}")
+        
         df = read_excel(file_path, "CS Receiving TAT")
+        print(f"\n원본 데이터 행 수: {len(df)}")
+        print(f"원본 데이터 열: {', '.join(df.columns.tolist())}")
 
-        logger.info("데이터 처리 중...")
+        print("\n데이터 처리 중...")
         processed_df, stats = main_data_processing(df, config)
-        logger.info(f"데이터 처리 완료. 처리된 데이터 행 수: {len(processed_df)}")
+        
+        print(f"\n처리된 데이터 행 수: {len(processed_df)}")
+        print(f"처리된 데이터 열: {', '.join(processed_df.columns.tolist())}")
 
-        logger.info("처리된 데이터 프레임의 열 이름:")
-        logger.info(processed_df.columns.tolist())
-
-        logger.info("데이터베이스에 업로드 중...")
+        print("\n데이터베이스에 업로드 중...")
         upload_to_mysql(processed_df)
-        logger.info("데이터가 성공적으로 데이터베이스에 업로드되었습니다.")
+        print("데이터베이스 업로드 완료")
 
-        logger.info("\n데이터 처리 통계:")
-        logger.info(f"원본 유니크 레코드 수: {stats['original_unique_count']}")
-        logger.info(f"처리된 유니크 레코드 수: {stats['processed_unique_count']}")
-        logger.info(f"일치율: {stats['match_rate']:.2f}%")
+        print(f"\n{'='*50}")
+        print("데이터 처리 통계:")
+        print(f"{'='*50}")
+        print(f"원본 유니크 레코드 수: {stats['original_unique_count']}")
+        print(f"처리된 유니크 레코드 수: {stats['processed_unique_count']}")
+        print(f"일치율: {stats['match_rate']:.2f}%")
+        print(f"{'='*50}")
 
     except Exception as e:
+        print(f"\n오류 발생: {str(e)}")
         logger.error(f"파일 처리 중 오류 발생: {str(e)}", exc_info=True)
 
 def main():
@@ -84,22 +94,24 @@ def main():
     config = setup_config()
 
     try:
-        # 사용자 입력 받기
+        print("\n엑셀 파일 데이터 변환 프로그램")
+        print("="*40)
         file_name = get_user_input()
-
-        # 파일 경로 설정
         file_path = os.path.join(DOWNLOAD_FOLDER, file_name)
 
         if os.path.exists(file_path):
-            # 테이블 생성
+            print("\n테이블 생성 중...")
             create_tables()
-            logger.info("지정된 파일을 처리합니다.")
-            # 파일 처리 및 데이터베이스 업로드
+            print("테이블 생성 완료")
+            
             process_and_upload_data(file_path, config)
+            
+            print("\n처리 완료!")
         else:
-            logger.error(f"지정된 파일을 찾을 수 없습니다: {file_path}")
+            print(f"\n오류: 파일을 찾을 수 없습니다 - {file_path}")
 
     except Exception as e:
+        print(f"\n예상치 못한 오류 발생: {str(e)}")
         logger.error(f"예상치 못한 오류 발생: {str(e)}", exc_info=True)
 
 if __name__ == "__main__":

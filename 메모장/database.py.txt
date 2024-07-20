@@ -14,6 +14,7 @@ from config import (
 
 logger = logging.getLogger(__name__)
 
+
 class MySQLConnectionPool:
     def __init__(self):
         """
@@ -91,9 +92,9 @@ def create_tables():
     """
     receiving_tat_table = f"""
     CREATE TABLE IF NOT EXISTS {RECEIVING_TAT_REPORT_TABLE} (
+        Cust_Sys_No VARCHAR(255) PRIMARY KEY,
         ReceiptNo VARCHAR(255),
         Replen_Balance_Order BIGINT,
-        Cust_Sys_No VARCHAR(255),
         Allocated_Part VARCHAR(255),
         EDI_Order_Type VARCHAR(255),
         ShipFromCode VARCHAR(255),
@@ -108,7 +109,6 @@ def create_tables():
         Week VARCHAR(10),
         OrderType VARCHAR(255),
         Count_PO INT,
-        PRIMARY KEY (ReceiptNo, Replen_Balance_Order, Cust_Sys_No),
         FOREIGN KEY (EDI_Order_Type) REFERENCES {ORDER_TYPE_TABLE}(EDI_Order_Type)
     )
     """
@@ -122,7 +122,13 @@ def upload_to_mysql(df: pd.DataFrame):
     """
     데이터프레임의 데이터를 데이터베이스에 업로드합니다.
     """
-    df = df[df["Country"] == "KR"]
+    logger.info(f"Original columns in dataframe: {df.columns.tolist()}")
+
+    if "Country" in df.columns:
+        df = df[df["Country"] == "KR"]
+        logger.info("Filtered data for Country 'KR'")
+    else:
+        logger.warning("'Country' column not found. Uploading all data.")
 
     with MySQLConnectionPool() as conn:
         for edi_type, detailed_type in ORDER_TYPE_MAPPING.items():
@@ -134,9 +140,9 @@ def upload_to_mysql(df: pd.DataFrame):
             conn.execute_query(query, (edi_type, detailed_type))
 
         insert_columns = [
+            "Cust_Sys_No",
             "ReceiptNo",
             "Replen_Balance_Order",
-            "Cust_Sys_No",
             "Allocated_Part",
             "EDI_Order_Type",
             "ShipFromCode",
@@ -154,14 +160,11 @@ def upload_to_mysql(df: pd.DataFrame):
         ]
 
         existing_columns = [col for col in insert_columns if col in df.columns]
+        logger.info(f"Columns to be inserted: {existing_columns}")
 
         insert_placeholders = ", ".join(["%s"] * len(existing_columns))
         update_placeholders = ", ".join(
-            [
-                f"{col}=VALUES({col})"
-                for col in existing_columns
-                if col not in ["ReceiptNo", "Replen_Balance_Order", "Cust_Sys_No"]
-            ]
+            [f"{col}=VALUES({col})" for col in existing_columns if col != "Cust_Sys_No"]
         )
 
         insert_query = f"""

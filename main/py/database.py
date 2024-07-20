@@ -16,9 +16,6 @@ logger = logging.getLogger(__name__)
 
 class MySQLConnectionPool:
     def __init__(self):
-        """
-        MySQL 연결 풀을 생성합니다.
-        """
         try:
             self.pool = mysql.connector.pooling.MySQLConnectionPool(
                 pool_name=POOL_NAME, pool_size=POOL_SIZE, **DB_CONFIG
@@ -29,9 +26,6 @@ class MySQLConnectionPool:
             raise
 
     def __enter__(self):
-        """
-        풀에서 연결을 가져옵니다.
-        """
         try:
             self.connection = self.pool.get_connection()
             self.cursor = self.connection.cursor(buffered=True)
@@ -42,9 +36,6 @@ class MySQLConnectionPool:
             raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        연결을 반환합니다.
-        """
         if self.cursor:
             self.cursor.close()
         if self.connection:
@@ -52,9 +43,6 @@ class MySQLConnectionPool:
         logger.info("Connection returned to pool")
 
     def execute_query(self, query: str, params: tuple = None):
-        """
-        쿼리를 실행합니다.
-        """
         try:
             if params:
                 self.cursor.execute(query, params)
@@ -67,9 +55,6 @@ class MySQLConnectionPool:
             raise
 
     def executemany(self, query: str, params: List[tuple]):
-        """
-        여러 쿼리를 배치 실행합니다.
-        """
         try:
             self.cursor.executemany(query, params)
             self.connection.commit()
@@ -78,11 +63,7 @@ class MySQLConnectionPool:
             self.connection.rollback()
             raise
 
-
 def create_tables():
-    """
-    필요한 데이터베이스 테이블을 생성합니다.
-    """
     order_type_table = f"""
     CREATE TABLE IF NOT EXISTS {ORDER_TYPE_TABLE} (
         EDI_Order_Type VARCHAR(255) PRIMARY KEY,
@@ -91,9 +72,9 @@ def create_tables():
     """
     receiving_tat_table = f"""
     CREATE TABLE IF NOT EXISTS {RECEIVING_TAT_REPORT_TABLE} (
+        Cust_Sys_No VARCHAR(255) PRIMARY KEY,
         ReceiptNo VARCHAR(255),
         Replen_Balance_Order BIGINT,
-        Cust_Sys_No VARCHAR(255),
         Allocated_Part VARCHAR(255),
         EDI_Order_Type VARCHAR(255),
         ShipFromCode VARCHAR(255),
@@ -101,6 +82,7 @@ def create_tables():
         Country VARCHAR(255),
         Quantity BIGINT,
         PutAwayDate DATETIME,
+        ActualPhysicalReceiptDate DATETIME,
         InventoryDate DATE,
         FY VARCHAR(20),
         Quarter VARCHAR(10),
@@ -108,7 +90,6 @@ def create_tables():
         Week VARCHAR(10),
         OrderType VARCHAR(255),
         Count_PO INT,
-        PRIMARY KEY (ReceiptNo, Replen_Balance_Order, Cust_Sys_No),
         FOREIGN KEY (EDI_Order_Type) REFERENCES {ORDER_TYPE_TABLE}(EDI_Order_Type)
     )
     """
@@ -117,12 +98,8 @@ def create_tables():
         conn.execute_query(receiving_tat_table)
     logger.info("Tables created successfully")
 
-
 def upload_to_mysql(df: pd.DataFrame):
-    """
-    데이터프레임의 데이터를 데이터베이스에 업로드합니다.
-    """
-    df = df[df["Country"] == "KR"]
+    logger.info(f"Original columns in dataframe: {df.columns.tolist()}")
 
     with MySQLConnectionPool() as conn:
         for edi_type, detailed_type in ORDER_TYPE_MAPPING.items():
@@ -134,34 +111,18 @@ def upload_to_mysql(df: pd.DataFrame):
             conn.execute_query(query, (edi_type, detailed_type))
 
         insert_columns = [
-            "ReceiptNo",
-            "Replen_Balance_Order",
-            "Cust_Sys_No",
-            "Allocated_Part",
-            "EDI_Order_Type",
-            "ShipFromCode",
-            "ShipToCode",
-            "Country",
-            "Quantity",
-            "PutAwayDate",
-            "InventoryDate",
-            "FY",
-            "Quarter",
-            "Month",
-            "Week",
-            "OrderType",
-            "Count_PO",
+            "Cust_Sys_No", "ReceiptNo", "Replen_Balance_Order", "Allocated_Part",
+            "EDI_Order_Type", "ShipFromCode", "ShipToCode", "Country", "Quantity",
+            "PutAwayDate", "ActualPhysicalReceiptDate", "InventoryDate", "FY",
+            "Quarter", "Month", "Week", "OrderType", "Count_PO"
         ]
 
         existing_columns = [col for col in insert_columns if col in df.columns]
+        logger.info(f"Columns to be inserted: {existing_columns}")
 
         insert_placeholders = ", ".join(["%s"] * len(existing_columns))
         update_placeholders = ", ".join(
-            [
-                f"{col}=VALUES({col})"
-                for col in existing_columns
-                if col not in ["ReceiptNo", "Replen_Balance_Order", "Cust_Sys_No"]
-            ]
+            [f"{col}=VALUES({col})" for col in existing_columns if col != "Cust_Sys_No"]
         )
 
         insert_query = f"""
@@ -172,17 +133,13 @@ def upload_to_mysql(df: pd.DataFrame):
 
         df_to_insert = df.reindex(columns=existing_columns, fill_value=None)
 
-        datetime_cols = ["PutAwayDate", "InventoryDate"]
+        datetime_cols = ["PutAwayDate", "ActualPhysicalReceiptDate", "InventoryDate"]
         for col in datetime_cols:
             if col in df_to_insert.columns:
-                df_to_insert[col] = pd.to_datetime(df_to_insert[col]).dt.strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
+                df_to_insert[col] = pd.to_datetime(df_to_insert[col]).dt.strftime("%Y-%m-%d %H:%M:%S")
 
         if "Replen_Balance_Order" in df_to_insert.columns:
-            df_to_insert["Replen_Balance_Order"] = df_to_insert[
-                "Replen_Balance_Order"
-            ].astype(str)
+            df_to_insert["Replen_Balance_Order"] = df_to_insert["Replen_Balance_Order"].astype(str)
 
         df_to_insert = df_to_insert.where(pd.notna(df_to_insert), None)
 
@@ -192,11 +149,7 @@ def upload_to_mysql(df: pd.DataFrame):
 
     logger.info(f"{len(data_to_insert)} rows uploaded to database")
 
-
 def get_db_data() -> pd.DataFrame:
-    """
-    데이터베이스에서 모든 데이터를 가져옵니다.
-    """
     try:
         with MySQLConnectionPool() as conn:
             query = f"SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}"
@@ -208,11 +161,7 @@ def get_db_data() -> pd.DataFrame:
         logger.error(f"Error fetching data from database: {str(e)}")
         return pd.DataFrame()
 
-
 def get_data_by_date(start_date: str, end_date: str) -> pd.DataFrame:
-    """
-    지정된 기간 동안의 데이터를 가져옵니다.
-    """
     with MySQLConnectionPool() as conn:
         query = f"""
         SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}
@@ -223,11 +172,7 @@ def get_data_by_date(start_date: str, end_date: str) -> pd.DataFrame:
         columns = [i[0] for i in conn.cursor.description]
         return pd.DataFrame(result, columns=columns)
 
-
 def get_data_by_inventory_date(start_date: str, end_date: str) -> pd.DataFrame:
-    """
-    지정된 기간 동안의 데이터를 inventoryDate를 기준으로 추출합니다.
-    """
     query = f"""
     SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}
     WHERE InventoryDate BETWEEN %s AND %s

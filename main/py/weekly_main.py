@@ -29,6 +29,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 def setup_config() -> Dict[str, Any]:
     """
     설정 정보를 반환합니다.
@@ -41,6 +42,7 @@ def setup_config() -> Dict[str, Any]:
         "ORDER_TYPE_MAPPING": ORDER_TYPE_MAPPING,
     }
 
+
 def get_user_input() -> tuple:
     """
     사용자로부터 입력을 받아 반환합니다.
@@ -50,6 +52,7 @@ def get_user_input() -> tuple:
     start_date = input("Enter start date (YYYY-MM-DD): ")  # 시작 날짜 입력
     end_date = input("Enter end date (YYYY-MM-DD): ")  # 종료 날짜 입력
     return username, password, start_date, end_date
+
 
 def read_excel(filepath: str, sheet_name: str) -> pd.DataFrame:
     """
@@ -64,16 +67,14 @@ def read_excel(filepath: str, sheet_name: str) -> pd.DataFrame:
         logger.error(f"엑셀 파일 읽기 실패: {str(e)}")
         raise
 
+
 def process_and_upload_data(file_path: str, config: Dict[str, Any]):
-    """
-    파일을 처리하고 데이터베이스에 업로드합니다.
-    """
     try:
         logger.info(f"파일 '{file_path}' 처리 시작")
         df = read_excel(file_path, "CS Receiving TAT")
 
         logger.info("데이터 처리 중...")
-        processed_df = main_data_processing(df, config)
+        processed_df, stats = main_data_processing(df, config)
         logger.info(f"데이터 처리 완료. 처리된 데이터 행 수: {len(processed_df)}")
 
         logger.info("처리된 데이터 프레임의 열 이름:")
@@ -82,8 +83,15 @@ def process_and_upload_data(file_path: str, config: Dict[str, Any]):
         logger.info("데이터베이스에 업로드 중...")
         upload_to_mysql(processed_df)
         logger.info("데이터가 성공적으로 데이터베이스에 업로드되었습니다.")
+
+        logger.info("\n데이터 처리 통계:")
+        logger.info(f"원본 유니크 레코드 수: {stats['original_unique_count']}")
+        logger.info(f"처리된 유니크 레코드 수: {stats['processed_unique_count']}")
+        logger.info(f"일치율: {stats['match_rate']:.2f}%")
+
     except Exception as e:
         logger.error(f"파일 처리 중 오류 발생: {str(e)}", exc_info=True)
+
 
 def main():
     """
@@ -132,6 +140,7 @@ def main():
             # 크롤러 종료
             crawler.close()
             logger.info("웹 크롤러를 종료합니다.")
+
 
 if __name__ == "__main__":
     main()

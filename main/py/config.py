@@ -43,6 +43,7 @@ COLUMN_MAPPING: Dict[str, str] = {
     "Country": "Country",
     "Quantity": "Quantity",
     "PutAwayDate": "PutAwayDate",
+    "ActualPhysicalReceiptDate": "ActualPhysicalReceiptDate",
 }
 
 # 테이블 이름
