@@ -52,19 +52,18 @@ class DataProcessor:
             if col in df.columns:
                 df[col] = pd.to_datetime(df[col], errors="coerce")
 
+        # PutAwayDate가 없는 경우 ActualPhysicalReceiptDate로 대체
         if "PutAwayDate" in df.columns and "ActualPhysicalReceiptDate" in df.columns:
             df.loc[df["PutAwayDate"].isnull(), "PutAwayDate"] = df.loc[
                 df["PutAwayDate"].isnull(), "ActualPhysicalReceiptDate"
             ]
-            mask = df["PutAwayDate"].dt.time == pd.Timestamp("00:00:00").time()
-            df.loc[mask, "PutAwayDate"] = df.loc[mask, "PutAwayDate"].dt.date.astype(
-                "datetime64[ns]"
-            ) + pd.to_timedelta(
-                df.loc[mask, "ActualPhysicalReceiptDate"].dt.time.astype(str)
-            )
 
         if "PutAwayDate" in df.columns:
             df["InventoryDate"] = df["PutAwayDate"].dt.date
+
+        # ActualPhysicalReceiptDate 컬럼 제거
+        if "ActualPhysicalReceiptDate" in df.columns:
+            df = df.drop(columns=["ActualPhysicalReceiptDate"])
 
         return df
 
