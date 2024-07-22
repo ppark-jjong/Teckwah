@@ -32,7 +32,7 @@ ORDER_TYPE_MAPPING: Dict[str, str] = {
 }
 
 # 컬럼 매핑 정보
-COLUMN_MAPPING: Dict[str, str] = {
+COLUMN_MAPPING = {
     "ReceiptNo": "ReceiptNo",
     "Replen/Balance Order#": "Replen_Balance_Order",
     "Cust Sys No": "Cust_Sys_No",
@@ -43,7 +43,13 @@ COLUMN_MAPPING: Dict[str, str] = {
     "Country": "Country",
     "Quantity": "Quantity",
     "PutAwayDate": "PutAwayDate",
-    "ActualPhysicalReceiptDate": "ActualPhysicalReceiptDate",
+    "InventoryDate": "InventoryDate",
+    "FY": "FY",
+    "Quarter": "Quarter",
+    "Month": "Month",
+    "Week": "Week",
+    "OrderType": "OrderType",
+    "Count_PO": "Count_PO",
 }
 
 # 테이블 이름

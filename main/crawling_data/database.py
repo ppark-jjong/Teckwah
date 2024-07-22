@@ -202,16 +202,34 @@ def get_data_by_date(start_date: str, end_date: str) -> pd.DataFrame:
         return pd.DataFrame(result, columns=columns)
 
 
-def get_data_by_inventory_date(
-    start_date: datetime, end_date: datetime
-) -> pd.DataFrame:
-    # InventoryDate를 기준으로 데이터를 추출하는 SQL 쿼리
-    query = f"""
-    SELECT * FROM {RECEIVING_TAT_REPORT_TABLE}
-    WHERE InventoryDate BETWEEN %s AND %s
-    """
-    with MySQLConnectionPool() as conn:
-        conn.execute_query(query, (start_date.date(), end_date.date()))
-        result = conn.cursor.fetchall()
-        columns = [i[0] for i in conn.cursor.description]
-        return pd.DataFrame(result, columns=columns)
+def get_data_by_inventory_date(start_date, end_date):
+    connection = None
+    try:
+        logger.info("데이터베이스 연결 시도 중...")
+        connection = mysql.connector.connect(**DB_CONFIG)
+        logger.info("데이터베이스 연결 성공")
+
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+        SELECT * FROM Receiving_TAT_Report
+        WHERE InventoryDate BETWEEN %s AND %s
+        """
+        logger.info(f"쿼리 실행 중: {query}")
+        cursor.execute(query, (start_date, end_date))
+        
+        logger.info("쿼리 결과 가져오는 중...")
+        result = cursor.fetchall()
+        logger.info(f"총 {len(result)}개의 레코드 검색됨")
+
+        df = pd.DataFrame(result)
+        return df
+    
+    except mysql.connector.Error as err:
+        logger.error(f"데이터베이스 오류: {err}")
+        raise
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+            logger.info("데이터베이스 연결 종료")
