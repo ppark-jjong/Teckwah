@@ -4,6 +4,8 @@ import pandas as pd
 from datetime import datetime
 from config import COMPLETE_FOLDER
 from database import get_data_by_inventory_date
+from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
 
 # 로깅 설정
 logging.basicConfig(
@@ -45,12 +47,31 @@ def preprocess_extracted_data(df: pd.DataFrame) -> pd.DataFrame:
     for col in date_columns:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors="coerce")
-    numeric_columns = ["quantity", "count_po"]
-    for col in numeric_columns:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    # count_po 처리: null이 아닌 값을 1로, null인 값을 0으로 변경
+    if "count_po" in df.columns:
+        df["count_po"] = df["count_po"].notnull().astype(int)
+
+    # quantity 처리
+    if "quantity" in df.columns:
+        df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce").fillna(0)
+
     logger.info("데이터 전처리 완료")
     return df
+
+
+def adjust_column_width(worksheet):
+    for column in worksheet.columns:
+        max_length = 0
+        column_letter = get_column_letter(column[0].column)
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = max_length + 2
+        worksheet.column_dimensions[column_letter].width = adjusted_width
 
 
 def analyze_data(df: pd.DataFrame) -> dict:
@@ -87,25 +108,67 @@ def save_to_excel(data: dict, filename: str):
     :param data: 저장할 데이터 딕셔너리
     :param filename: 저장할 파일 이름
     """
-
     file_path = os.path.join(COMPLETE_FOLDER, filename)
+
+    # Full Data 컬럼 순서 지정
+    full_data_columns = [
+        "receiptno",
+        "replen_balance_order",
+        "cust_sys_no",
+        "allocated_part",
+        "edi_order_type",
+        "shipfromcode",
+        "shiptocode",
+        "country",
+        "quantity",
+        "putawaydate",
+        "inventorydate",
+        "fy",
+        "quarter",
+        "month",
+        "week",
+        "ordertype",
+        "count_po",
+    ]
+
+    # 데이터를 엑셀 파일로 저장
     with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
         logger.info("전체 데이터를 Excel 파일로 저장 중")
-        data["full_data"].to_excel(writer, sheet_name="Full_Data", index=False)
+        data["full_data"][full_data_columns].to_excel(
+            writer, sheet_name="Full_Data", index=False
+        )
 
         logger.info("Summary 데이터를 Excel 파일로 저장 중")
-        data["summary"].to_excel(writer, sheet_name="Summary", index=False)
 
-        logger.info("주차별 분석 데이터를 Excel 파일로 저장 중")
+        # Weekly Analysis 데이터 쓰기
         data["weekly_analysis"].to_excel(
-            writer, sheet_name="Weekly_Analysis", index=False
+            writer, sheet_name="Summary", index=False, startrow=1, startcol=0
         )
 
-        logger.info("분야별 분석 데이터를 Excel 파일로 저장 중")
+        # ShipTo Analysis 데이터 쓰기
+        shipto_start_col = len(data["weekly_analysis"].columns) + 2  # 2칸 간격
         data["shipto_analysis"].to_excel(
-            writer, sheet_name="ShipTo_Analysis", index=False
+            writer,
+            sheet_name="Summary",
+            index=False,
+            startrow=1,
+            startcol=shipto_start_col,
         )
 
+    # 저장된 파일을 다시 열어 제목 추가 및 열 너비 조정
+    workbook = load_workbook(file_path)
+    summary_sheet = workbook["Summary"]
+
+    # 제목 추가
+    summary_sheet.cell(row=1, column=1, value="Weekly Analysis")
+    summary_sheet.cell(row=1, column=shipto_start_col + 1, value="ShipTo Analysis")
+
+    # 열 너비 조정
+    for sheet in workbook.worksheets:
+        adjust_column_width(sheet)
+
+    # 변경사항 저장
+    workbook.save(file_path)
     logger.info(f"데이터가 Excel 파일로 저장되었습니다: {file_path}")
 
 
@@ -126,20 +189,13 @@ def main():
         df = preprocess_extracted_data(df)
 
         logger.info("데이터 분석 시작")
-
         analysis_results = analyze_data(df)
         logger.info("데이터 분석 완료")
 
         filename = f"{start_date.strftime('%Y%m%d')}-{end_date.strftime('%Y%m%d')}_ReceivingTAT_analysis.xlsx"
 
-        summary_template_path = "C:/MyMain/Teckwah/download/sample.xlsx"
-        logger.info(f"Summary 템플릿 파일을 {summary_template_path}에서 읽는 중")
-        summary_df = pd.read_excel(summary_template_path, sheet_name="Summary")
-        logger.info("Summary 템플릿 파일 읽기 완료")
-
         data_to_save = {
             "full_data": df,
-            "summary": summary_df,
             "weekly_analysis": analysis_results["weekly_analysis"],
             "shipto_analysis": analysis_results["shipto_analysis"],
         }
