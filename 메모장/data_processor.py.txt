@@ -7,11 +7,14 @@ from datetime import date
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class DataProcessor:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
 
-    def process_dataframe(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    def process_dataframe(
+        self, df: pd.DataFrame
+    ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         logger.info(f"Original columns: {df.columns.tolist()}")
         original_unique_count = df["Cust Sys No"].nunique()
 
@@ -40,29 +43,40 @@ class DataProcessor:
     def _convert_data_types(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Converting data types")
         if "Quantity" in df.columns:
-            df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype("Int64")
+            df["Quantity"] = (
+                pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype("Int64")
+            )
 
         date_columns = ["PutAwayDate", "ActualPhysicalReceiptDate"]
         for col in date_columns:
             if col in df.columns:
                 df[col] = pd.to_datetime(df[col], errors="coerce")
 
+        # PutAwayDate가 없는 경우 ActualPhysicalReceiptDate로 대체
         if "PutAwayDate" in df.columns and "ActualPhysicalReceiptDate" in df.columns:
-            df.loc[df["PutAwayDate"].isnull(), "PutAwayDate"] = df.loc[df["PutAwayDate"].isnull(), "ActualPhysicalReceiptDate"]
-            mask = df["PutAwayDate"].dt.time == pd.Timestamp("00:00:00").time()
-            df.loc[mask, "PutAwayDate"] = df.loc[mask, "PutAwayDate"].dt.date.astype("datetime64[ns]") + pd.to_timedelta(df.loc[mask, "ActualPhysicalReceiptDate"].dt.time.astype(str))
+            df.loc[df["PutAwayDate"].isnull(), "PutAwayDate"] = df.loc[
+                df["PutAwayDate"].isnull(), "ActualPhysicalReceiptDate"
+            ]
 
         if "PutAwayDate" in df.columns:
             df["InventoryDate"] = df["PutAwayDate"].dt.date
+
+        # ActualPhysicalReceiptDate 컬럼 제거
+        if "ActualPhysicalReceiptDate" in df.columns:
+            df = df.drop(columns=["ActualPhysicalReceiptDate"])
 
         return df
 
     def _clean_replen_balance_order(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Cleaning Replen_Balance_Order")
         if "Replen_Balance_Order" in df.columns:
-            df["Replen_Balance_Order"] = df["Replen_Balance_Order"].astype(str).str.split(".").str[0]
+            df["Replen_Balance_Order"] = (
+                df["Replen_Balance_Order"].astype(str).str.split(".").str[0]
+            )
             numeric_mask = df["Replen_Balance_Order"].str.isnumeric()
-            df.loc[numeric_mask, "Replen_Balance_Order"] = pd.to_numeric(df.loc[numeric_mask, "Replen_Balance_Order"], errors="coerce").astype("Int64")
+            df.loc[numeric_mask, "Replen_Balance_Order"] = pd.to_numeric(
+                df.loc[numeric_mask, "Replen_Balance_Order"], errors="coerce"
+            ).astype("Int64")
         return df
 
     def _handle_ship_from_code(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -74,24 +88,45 @@ class DataProcessor:
     def _calculate_fiscal_data(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Calculating fiscal data")
         if "PutAwayDate" in df.columns:
-            fiscal_data = df["PutAwayDate"].apply(lambda x: self.get_dell_week_and_fy(x) if pd.notna(x) else ("Unknown", "Unknown"))
+            fiscal_data = df["PutAwayDate"].apply(
+                lambda x: (
+                    self.get_dell_week_and_fy(x)
+                    if pd.notna(x)
+                    else ("Unknown", "Unknown")
+                )
+            )
             df["Week"] = fiscal_data.apply(lambda x: x[0])
             df["FY"] = fiscal_data.apply(lambda x: x[1])
-            df["Quarter"] = df["PutAwayDate"].apply(lambda x: self.get_quarter(x) if pd.notna(x) else "Unknown")
+            df["Quarter"] = df["PutAwayDate"].apply(
+                lambda x: self.get_quarter(x) if pd.notna(x) else "Unknown"
+            )
             df["Month"] = df["PutAwayDate"].dt.strftime("%m").fillna("00")
         return df
 
     def _map_order_type(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Mapping order types")
-        df["OrderType"] = df["EDI_Order_Type"].map(self.config["ORDER_TYPE_MAPPING"]).fillna("Unknown")
+        df["OrderType"] = (
+            df["EDI_Order_Type"]
+            .map(self.config["ORDER_TYPE_MAPPING"])
+            .fillna("Unknown")
+        )
         return df
 
     def _aggregate_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Aggregating duplicates")
-        agg_funcs = {col: "first" for col in df.columns if col != "Cust_Sys_No"}
-        agg_funcs["Quantity"] = "sum"
-        df = df.groupby("Cust_Sys_No").agg(agg_funcs).reset_index()
+
+        # Count_PO를 미리 계산
         df["Count_PO"] = df.groupby("Cust_Sys_No")["Cust_Sys_No"].transform("count")
+
+        # 모든 컬럼에 대해 첫 번째 값을 선택하되, Quantity는 합계를 계산
+        agg_funcs = {
+            col: "first" for col in df.columns if col not in ["Cust_Sys_No", "Quantity"]
+        }
+        agg_funcs["Quantity"] = "sum"
+
+        # 그룹화 및 집계
+        df = df.groupby("Cust_Sys_No", as_index=False).agg(agg_funcs)
+
         return df
 
     def _handle_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -103,9 +138,15 @@ class DataProcessor:
                 df[col] = df[col].fillna(0)
         return df
 
-    def _calculate_stats(self, df: pd.DataFrame, original_unique_count: int) -> Dict[str, Any]:
+    def _calculate_stats(
+        self, df: pd.DataFrame, original_unique_count: int
+    ) -> Dict[str, Any]:
         processed_unique_count = len(df)
-        match_rate = (processed_unique_count / original_unique_count) * 100 if original_unique_count > 0 else 0
+        match_rate = (
+            (processed_unique_count / original_unique_count) * 100
+            if original_unique_count > 0
+            else 0
+        )
         return {
             "original_unique_count": original_unique_count,
             "processed_unique_count": processed_unique_count,
@@ -113,7 +154,11 @@ class DataProcessor:
         }
 
     def get_fy_start(self, date: pd.Timestamp) -> pd.Timestamp:
-        year = date.year if date.month >= 2 or (date.month == 2 and date.day >= 7) else date.year - 1
+        year = (
+            date.year
+            if date.month >= 2 or (date.month == 2 and date.day >= 7)
+            else date.year - 1
+        )
         feb_1 = pd.Timestamp(year=year, month=2, day=1)
         return feb_1 + pd.Timedelta(days=(5 - feb_1.dayofweek) % 7)
 
@@ -130,7 +175,10 @@ class DataProcessor:
         quarter = (days_since_fy_start // 91) + 1
         return f"Q{min(quarter, 4)}"
 
-def main_data_processing(df: pd.DataFrame, config: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+
+def main_data_processing(
+    df: pd.DataFrame, config: Dict[str, Any]
+) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     processor = DataProcessor(config)
     processed_df, stats = processor.process_dataframe(df)
 
