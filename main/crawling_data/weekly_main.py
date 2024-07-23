@@ -84,11 +84,6 @@ def process_and_upload_data(file_path: str, config: Dict[str, Any]):
         upload_to_mysql(processed_df)
         logger.info("데이터가 성공적으로 데이터베이스에 업로드되었습니다.")
 
-        logger.info("\n데이터 처리 통계:")
-        logger.info(f"원본 유니크 레코드 수: {stats['original_unique_count']}")
-        logger.info(f"처리된 유니크 레코드 수: {stats['processed_unique_count']}")
-        logger.info(f"일치율: {stats['match_rate']:.2f}%")
-
     except Exception as e:
         logger.error(f"파일 처리 중 오류 발생: {str(e)}", exc_info=True)
 

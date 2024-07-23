@@ -16,9 +16,7 @@ def read_excel(filepath, sheet_name):
 
 
 def get_raw_data():
-    raw_data_file = (
-        "C:/MyMain/Teckwah/download/xlsx_files/240629_240705_ReceivingTAT_report.xlsx"
-    )
+    raw_data_file = "C:/MyMain/Teckwah/download/xlsx_files/test.xlsx"
     return read_excel(raw_data_file, "CS Receiving TAT")
 
 
@@ -75,10 +73,10 @@ def preprocess_raw_data(raw_df):
     raw_df["Count_PO"] = raw_df.groupby("composite_key")["composite_key"].transform(
         "count"
     )
-    
+
     # Country 컬럼이 KR인 데이터만 필터링
     raw_df = raw_df[raw_df["Country"] == "KR"]
-    
+
     return raw_df
 
 

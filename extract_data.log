@@ -157,3 +157,24 @@ Traceback (most recent call last):
   File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\indexes\base.py", line 6252, in _raise_if_missing
     raise KeyError(f"{not_found} not in index")
 KeyError: "['DIRTAJ', 'DIRPUS', 'DIRKWJ'] not in index"
+2024-07-22 15:23:40,355 - INFO - 입력된 날짜: 2024-07-13부터 2024-07-19까지
+2024-07-22 15:23:40,364 - INFO - 날짜 변환 완료: 2024-07-13 00:00:00부터 2024-07-19 00:00:00까지
+2024-07-22 15:23:40,364 - INFO - 데이터베이스에서 2024-07-13부터 2024-07-19까지의 데이터를 추출 중
+2024-07-22 15:23:40,512 - INFO - Connection pool created successfully
+2024-07-22 15:23:40,513 - INFO - Connection acquired from pool
+2024-07-22 15:23:40,526 - INFO - Connection returned to pool
+2024-07-22 15:23:40,528 - INFO - 데이터베이스에서 794개의 데이터를 추출 완료
+2024-07-22 15:23:40,528 - INFO - 추출된 데이터 전처리 시작
+2024-07-22 15:23:40,540 - INFO - 데이터 전처리 완료
+2024-07-22 15:23:40,545 - INFO - 주차별 데이터 분석 완료
+2024-07-22 15:23:40,547 - INFO - 분야별 데이터 분석 완료
+2024-07-22 15:23:40,547 - INFO - 데이터 분석 완료
+2024-07-22 15:23:40,547 - INFO - Summary 템플릿 파일을 C:/MyMain/Teckwah/download/sample.xlsx에서 읽는 중
+2024-07-22 15:23:40,979 - INFO - Summary 템플릿 파일 읽기 완료
+2024-07-22 15:23:40,981 - INFO - 전체 데이터를 Excel 파일로 저장 중
+2024-07-22 15:23:41,042 - INFO - Summary 데이터를 Excel 파일로 저장 중
+2024-07-22 15:23:41,044 - INFO - 주차별 분석 데이터를 Excel 파일로 저장 중
+2024-07-22 15:23:41,045 - INFO - 분야별 분석 데이터를 Excel 파일로 저장 중
+2024-07-22 15:23:41,285 - INFO - 데이터가 Excel 파일로 저장되었습니다: C:\MyMain\Teckwah\download\xlsx_files_complete\20240713-20240719_ReceivingTAT_analysis.xlsx
+2024-07-22 15:23:41,285 - INFO - Excel 파일 생성 완료
+2024-07-22 16:47:25,884 - INFO - 프로그램 시작
