@@ -51,9 +51,9 @@ def preprocess_extracted_data(df: pd.DataFrame) -> pd.DataFrame:
 
     # inventorydate 처리
     if "inventorydate" in df.columns:
-        df["inventorydate"] = pd.to_datetime(df["inventorydate"], errors="coerce")
+        df["inventorydate"] = pd.to_datetime(df["inventorydate"]).dt.date
         # inventorydate를 'YY-MM-DD' 형식의 문자열로 변환
-        df["inventorydate_str"] = df["inventorydate"].dt.strftime("%y-%m-%d")
+        df["inventorydate_str"] = df["inventorydate"].apply(lambda x: x.strftime("%y-%m-%d") if pd.notnull(x) else None)
 
     # count_po 처리: null이 아닌 값을 1로, null인 값을 0으로 변경
     if "count_po" in df.columns:
