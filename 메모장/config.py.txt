@@ -2,7 +2,12 @@ from typing import Dict, Any
 
 # 데이터베이스 설정 정보
 DB_CONFIG: Dict[str, Any] = {
-    "host": "localhost",
+    # "host": "teckwahkorea-rds.c9s6kg46srq7.ap-northeast-2.rds.amazonaws.com",
+    # "database": "teckwahkr_DB",
+    # "user": "teckwahkradmin",
+    # "password": "TeckWah32022",
+    # "port" : 3309,    
+    "host":"localhost",
     "database": "teckwah_test",
     "user": "root",
     "password": "1234",
