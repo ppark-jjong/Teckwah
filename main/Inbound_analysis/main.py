@@ -22,6 +22,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 def setup_config() -> Dict[str, Any]:
     """
     설정 정보를 반환합니다.
@@ -34,11 +35,13 @@ def setup_config() -> Dict[str, Any]:
         "ORDER_TYPE_MAPPING": ORDER_TYPE_MAPPING,
     }
 
+
 def get_user_input() -> str:
     """
     사용자로부터 파일 이름을 입력받습니다.
     """
     return input("처리할 파일 이름을 입력하세요 (확장자 포함): ")
+
 
 def read_excel(filepath: str, sheet_name: str) -> pd.DataFrame:
     """
@@ -55,19 +58,34 @@ def read_excel(filepath: str, sheet_name: str) -> pd.DataFrame:
         print(f"엑셀 파일 읽기 실패: {str(e)}")
         raise
 
+
 def process_and_upload_data(file_path: str, config: Dict[str, Any]):
     try:
         print(f"\n{'='*50}")
         print(f"파일 '{os.path.basename(file_path)}' 처리 시작")
         print(f"{'='*50}")
-        
+
         df = read_excel(file_path, "CS Receiving TAT")
         print(f"\n원본 데이터 행 수: {len(df)}")
         print(f"원본 데이터 열: {', '.join(df.columns.tolist())}")
 
+        # 컬럼 이름 확인 및 수정
+        if "Cust Sys No" not in df.columns:
+            possible_names = [
+                "Customer System Number",
+                "Customer Sys No",
+                "Cust System No",
+            ]
+            for name in possible_names:
+                if name in df.columns:
+                    df = df.rename(columns={name: "Cust Sys No"})
+                    break
+            else:
+                raise ValueError("'Cust Sys No' 또는 유사한 컬럼을 찾을 수 없습니다.")
+
         print("\n데이터 처리 중...")
         processed_df, stats = main_data_processing(df, config)
-        
+
         print(f"\n처리된 데이터 행 수: {len(processed_df)}")
         print(f"처리된 데이터 열: {', '.join(processed_df.columns.tolist())}")
 
@@ -87,6 +105,7 @@ def process_and_upload_data(file_path: str, config: Dict[str, Any]):
         print(f"\n오류 발생: {str(e)}")
         logger.error(f"파일 처리 중 오류 발생: {str(e)}", exc_info=True)
 
+
 def main():
     """
     메인 함수: 설정 초기화, 사용자 입력 수집, 파일 처리 및 데이터베이스 업로드
@@ -95,7 +114,7 @@ def main():
 
     try:
         print("\n엑셀 파일 데이터 변환 프로그램")
-        print("="*40)
+        print("=" * 40)
         file_name = get_user_input()
         file_path = os.path.join(DOWNLOAD_FOLDER, file_name)
 
@@ -103,9 +122,9 @@ def main():
             print("\n테이블 생성 중...")
             create_tables()
             print("테이블 생성 완료")
-            
+
             process_and_upload_data(file_path, config)
-            
+
             print("\n처리 완료!")
         else:
             print(f"\n오류: 파일을 찾을 수 없습니다 - {file_path}")
@@ -113,6 +132,7 @@ def main():
     except Exception as e:
         print(f"\n예상치 못한 오류 발생: {str(e)}")
         logger.error(f"예상치 못한 오류 발생: {str(e)}", exc_info=True)
+
 
 if __name__ == "__main__":
     main()
