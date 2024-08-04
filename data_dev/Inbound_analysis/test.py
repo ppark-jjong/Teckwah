@@ -17,7 +17,7 @@ def read_excel(filepath, sheet_name):
 
 def get_raw_data():
     raw_data_file = (
-        "C:/MyMain/Teckwah/download/xlsx_files/240713_240719_ReceivingTAT_report.xlsx"
+        "C:/MyMain/Teckwah/download/xlsx_files/240727_240802_ReceivingTAT_report.xlsx"
     )
 
     return read_excel(raw_data_file, "CS Receiving TAT")
