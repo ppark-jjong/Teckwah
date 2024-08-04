@@ -44,7 +44,7 @@ class DataProcessor:
         logger.info("Converting data types")
         if "Quantity" in df.columns:
             df["Quantity"] = (
-                pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype("Int64")
+                pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype("Int64")  # 문자열을 숫자형으로 변환하고 변환 불가능한 값은 NaN으로 처리
             )
 
         date_columns = ["PutAwayDate", "ActualPhysicalReceiptDate"]
@@ -67,6 +67,7 @@ class DataProcessor:
 
         return df
 
+
     def _clean_replen_balance_order(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Cleaning Replen_Balance_Order")
         if "Replen_Balance_Order" in df.columns:
@@ -79,6 +80,7 @@ class DataProcessor:
             ).astype("Int64")
         return df
 
+    # ShipFromCode의 값이 REMARK라면 none으로 처리
     def _handle_ship_from_code(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Handling ShipFromCode")
         if "ShipFromCode" in df.columns:
@@ -128,6 +130,7 @@ class DataProcessor:
         df = df.groupby("Cust_Sys_No", as_index=False).agg(agg_funcs)
 
         return df
+
 
     def _handle_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Handling missing values")

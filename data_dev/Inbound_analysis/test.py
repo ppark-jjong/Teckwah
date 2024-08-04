@@ -17,7 +17,11 @@ def read_excel(filepath, sheet_name):
 
 def get_raw_data():
     raw_data_file = (
+<<<<<<< HEAD:main/Inbound_analysis/test.py
         "C:/MyMain/Teckwah/download/xlsx_files/3.012_CS_Receiving_TAT_Report_accumulated.xlsx"
+=======
+        "C:/MyMain/Teckwah/download/xlsx_files/240727_240802_ReceivingTAT_report.xlsx"
+>>>>>>> origin/main:data_dev/Inbound_analysis/test.py
     )
 
     return read_excel(raw_data_file, "CS Receiving TAT")

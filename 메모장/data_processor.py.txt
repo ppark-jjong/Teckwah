@@ -44,7 +44,7 @@ class DataProcessor:
         logger.info("Converting data types")
         if "Quantity" in df.columns:
             df["Quantity"] = (
-                pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype("Int64")
+                pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype("Int64")  # 문자열을 숫자형으로 변환하고 변환 불가능한 값은 NaN으로 처리
             )
 
         date_columns = ["PutAwayDate", "ActualPhysicalReceiptDate"]
