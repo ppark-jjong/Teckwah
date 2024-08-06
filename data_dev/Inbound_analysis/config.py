@@ -2,22 +2,15 @@ from typing import Dict, Any
 
 # 데이터베이스 설정 정보
 DB_CONFIG: Dict[str, Any] = {
-<<<<<<< HEAD:main/Inbound_analysis/config.py
-    "host": "teckwahkorea-db.c9s6kg46srq7.ap-northeast-2.rds.amazonaws.com",
-    "database": "teckwah_KR",
-    "user": "teckwahKRAdmin",
-    "password": "TeckWah32022",
-=======
     "host": "teckwahkorea-rds.c9s6kg46srq7.ap-northeast-2.rds.amazonaws.com",
     "database": "teckwahkr_DB",
     "user": "teckwahkradmin",
     "password": "TeckWah32022",
-    "port" : 3309,    
+    "port": 3309,
     # "host":"localhost",
     # "database": "teckwah_test",
     # "user": "root",
     # "password": "1234",
->>>>>>> origin/main:data_dev/Inbound_analysis/config.py
     "allow_local_infile": True,
 }
 
